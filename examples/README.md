@@ -1,11 +1,3 @@
 # Examples
 
-Exemples exclusivement fictifs ou anonymisés.
-
-Chaque exemple doit pouvoir être publié sans exposer :
-
-- client réel ;
-- infrastructure réelle ;
-- coordonnées ;
-- secret ;
-- donnée personnelle.
+Les exemples complets seront enrichis au Sprint 004.6 avec le premier rapport réel SQL Server.

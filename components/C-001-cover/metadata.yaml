@@ -1,0 +1,16 @@
+id: C-001
+name: "Cover"
+slug: "cover"
+version: "1.0"
+status: "Stable"
+validated: true
+used: true
+owner: "A.D.C. srl"
+introduced: "Sprint 004.3"
+last_review: "2026-07-27"
+artifacts:
+  docx: null
+  pdf: null
+  preview: null
+used_in: []
+notes: "Component registered during Sprint 004.4."

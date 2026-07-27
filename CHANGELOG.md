@@ -1,20 +1,18 @@
 # Changelog
 
-Toutes les évolutions importantes d’ADC Studio sont consignées ici.
+## 0.4.4 — 2026-07-27
 
-Le projet suit une logique de versionnement sémantique :
+### Added
 
-- `MAJOR` : rupture importante ou refonte ;
-- `MINOR` : nouvelle fonctionnalité compatible ;
-- `PATCH` : correction ou ajustement mineur.
+- `PROJECT_STATUS.md` comme tableau de bord du projet.
+- `COMPONENT_CATALOG.md` avec les dix premiers composants.
+- Arborescence autonome `components/`.
+- Métadonnées YAML par composant.
+- Documentation du cycle de vie.
+- ADR-0006 sur l’architecture documentaire par composants.
+- Mise à jour du README et de la roadmap.
 
-## [0.1.0] - 2026-07-27
+### Changed
 
-### Ajouté
-
-- structure initiale du dépôt ;
-- règles de confidentialité ;
-- conventions Git ;
-- configuration des fins de ligne ;
-- configuration de l’éditeur ;
-- script d’initialisation PowerShell.
+- ADC Studio est désormais suivi comme un framework logiciel versionné.
+- La clôture d’un sprint exige la mise à jour du statut global et des composants.

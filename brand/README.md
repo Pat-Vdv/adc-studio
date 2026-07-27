@@ -1,9 +1,3 @@
 # Brand
 
-Ce répertoire accueillera :
-
-- le Brand Book A.D.C. ;
-- la palette ;
-- les règles typographiques ;
-- les règles d’usage du logo ;
-- les principes de mise en page.
+L’identité officielle A.D.C. reste celle validée au Sprint 004.2/004.3. Les fichiers graphiques ne sont pas dupliqués dans ce paquet de fondation.

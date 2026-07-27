@@ -1,41 +1,45 @@
 # ADC Studio
 
-Suite documentaire générique d’A.D.C.
+**ADC Studio** est un framework documentaire professionnel, versionné et composé de briques réutilisables.
 
-ADC Studio regroupe l’identité documentaire, les composants graphiques, les modèles Word/PDF et les outils de génération utilisés pour produire des livrables techniques cohérents et professionnels.
+## Points d’entrée
 
-## Objectifs
+- [État du projet](PROJECT_STATUS.md)
+- [Roadmap](ROADMAP.md)
+- [Catalogue des composants](COMPONENT_CATALOG.md)
+- [Cycle de vie des composants](docs/component_lifecycle.md)
+- [ADR-0006 — Architecture par composants](docs/adr/ADR-0006-document-component-architecture.md)
 
-- centraliser les règles de mise en page ;
-- versionner les modèles comme un produit logiciel ;
-- réutiliser les mêmes composants dans tous les rapports ;
-- séparer strictement le framework générique des données clients ;
-- permettre l’automatisation progressive de la génération documentaire.
+## Version courante
+
+- Version : `0.4.4`
+- Sprint : `004.4`
+- Statut : Bibliothèque de composants — fondations
 
 ## Structure
 
 ```text
-assets/       Ressources graphiques génériques
-brand/        Brand Book et règles d’identité
-components/   Composants documentaires réutilisables
-docs/         Documentation du projet
-examples/     Exemples fictifs ou anonymisés
-templates/    Modèles Word et PDF
-tools/        Scripts et outils de génération
-build/        Fichiers temporaires de construction
-exports/      Livrables générés localement
+ADC-Studio/
+├── README.md
+├── PROJECT_STATUS.md
+├── ROADMAP.md
+├── COMPONENT_CATALOG.md
+├── CHANGELOG.md
+├── VERSION
+├── components/
+├── templates/
+├── examples/
+├── brand/
+└── docs/
 ```
 
-## Confidentialité
+## Principe
 
-Ce dépôt ne doit contenir aucune donnée client réelle, aucun secret, aucune configuration de production et aucun rapport confidentiel.
+Un rapport ADC Studio est assemblé à partir de composants documentaires identifiés, versionnés, documentés et suivis selon un cycle de maturité commun.
 
-Les rapports clients doivent être conservés hors du dépôt, par exemple dans :
+Chaque sprint doit mettre à jour au minimum :
 
-```text
-D:\Projets\ADC-Clients\
-```
-
-## Version
-
-Version initiale : `0.1.0`
+1. `PROJECT_STATUS.md` ;
+2. le catalogue et les métadonnées des composants concernés ;
+3. `CHANGELOG.md` ;
+4. `VERSION` si la version évolue.

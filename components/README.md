@@ -1,12 +1,16 @@
-# Components
+# ADC Studio Components
 
-Bibliothèque de composants documentaires :
+Ce dossier contient les composants documentaires officiels.
 
-- couvertures ;
-- encadrés ;
-- tableaux ;
-- chronologies ;
-- fiches de décision ;
-- blocs de risque ;
-- annexes ;
-- historiques de version.
+## Convention
+
+```text
+components/C-xxx-nom-du-composant/
+├── README.md
+├── metadata.yaml
+├── component.docx      # lorsque disponible
+├── component.pdf       # lorsque disponible
+└── preview.png         # lorsque disponible
+```
+
+Les identifiants `C-xxx` sont permanents. Un composant supprimé ne libère jamais son identifiant.
