@@ -1,0 +1,13 @@
+id: P-001
+name: SQL Server Audit
+version: 1.0
+purpose: Technical SQL audit
+
+mandatory_components:
+  - C-001 Cover
+  - C-002 Identity
+  - C-003 Executive Summary
+
+optional_components:
+  - C-008 Timeline
+  - C-010 Evidence

@@ -1,8 +1,8 @@
 # Project Status
 
-Version: 0.7.0
+Version: 0.8.0
 
-Current focus:
-- Gold Standard components
-- Documentation contracts
-- Component validation
+Current milestone:
+- Document Profiles
+- First Reference Reports
+- Component orchestration

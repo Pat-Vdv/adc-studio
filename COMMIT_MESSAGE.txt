@@ -1,1 +1,1 @@
-feat(adc-studio): introduce Gold Standard components (Sprint 007)
+feat(adc-studio): introduce document profiles and reference reports

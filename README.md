@@ -1,3 +1,7 @@
-# Sprint 007
+# ADC Studio – Sprint 008
 
-Gold Standard Components.
+## Theme
+Reference Report Profiles
+
+This sprint introduces document profiles that assemble reusable components
+into complete professional reports.

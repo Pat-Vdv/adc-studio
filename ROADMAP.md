@@ -1,8 +1,7 @@
-# Sprint 007
+# Sprint 008
 
-- [ ] Gold Standard Finding
-- [ ] Gold Standard Recommendation
-- [ ] Gold Standard Evidence
-- [ ] Documentation contracts
-- [ ] Component tests
-- [ ] VISION.md
+- [ ] SQL Server Audit profile
+- [ ] Linux Audit profile
+- [ ] Incident Report profile
+- [ ] Profile specification
+- [ ] Integration guidelines
