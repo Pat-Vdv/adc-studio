@@ -1,0 +1,9 @@
+id: C-010
+name: Evidence
+quality: Gold
+guarantees:
+  - stable_identifier
+  - versioned
+  - machine_readable
+  - human_readable
+  - printable

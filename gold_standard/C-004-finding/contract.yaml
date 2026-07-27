@@ -1,0 +1,9 @@
+id: C-004
+name: Finding
+quality: Gold
+guarantees:
+  - stable_identifier
+  - versioned
+  - machine_readable
+  - human_readable
+  - printable

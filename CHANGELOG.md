@@ -1,4 +1,2 @@
-# Changelog
-
-## Sprint 006
-- Machine-readable component foundation.
+## Sprint 007
+- Gold Standard initiative.

@@ -1,1 +1,1 @@
-feat(adc-studio): machine-readable component foundation (Sprint 006)
+feat(adc-studio): introduce Gold Standard components (Sprint 007)

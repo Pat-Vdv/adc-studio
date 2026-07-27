@@ -1,9 +1,8 @@
-# Sprint 006 backlog
+# Sprint 007
 
-- [ ] schema.json for components
-- [ ] prompt_guidance.md
-- [ ] validation_rules.md
-- [ ] quality_checklist.md
-- [ ] review.md
-- [ ] AI interoperability
-- [ ] ADR-0007
+- [ ] Gold Standard Finding
+- [ ] Gold Standard Recommendation
+- [ ] Gold Standard Evidence
+- [ ] Documentation contracts
+- [ ] Component tests
+- [ ] VISION.md

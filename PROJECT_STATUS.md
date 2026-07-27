@@ -1,15 +1,8 @@
-# PROJECT STATUS
+# Project Status
 
-Version: 0.6.0
-Sprint: 006
+Version: 0.7.0
 
-## Main objective
-Turn document components into machine-readable reusable assets.
-
-New capabilities:
-- Structured schemas
-- AI guidance
-- Validation rules
-- Metadata
-- Provenance
-- Interoperability
+Current focus:
+- Gold Standard components
+- Documentation contracts
+- Component validation
