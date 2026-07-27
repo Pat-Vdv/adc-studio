@@ -1,1 +1,1 @@
-feat(adc-studio): initialize Sprint 005 Component Pack v1.0
+feat(adc-studio): machine-readable component foundation (Sprint 006)

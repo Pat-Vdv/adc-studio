@@ -1,22 +1,15 @@
 # PROJECT STATUS
 
-Version: 0.5.0
-Sprint: 005
+Version: 0.6.0
+Sprint: 006
 
-## Objectives
-- Finalize first 10 document components
-- Create real examples
-- Prepare writing guide
+## Main objective
+Turn document components into machine-readable reusable assets.
 
-| ID | Component | Target |
-|----|-----------|--------|
-| C-001 | Cover | Stable |
-| C-002 | Identity | Stable |
-| C-003 | Executive Summary | Stable |
-| C-004 | Finding | Stable |
-| C-005 | Recommendation | Stable |
-| C-006 | Risk | Stable |
-| C-007 | Decision | Stable |
-| C-008 | Timeline | Stable |
-| C-009 | Environment | Stable |
-| C-010 | Evidence | Stable |
+New capabilities:
+- Structured schemas
+- AI guidance
+- Validation rules
+- Metadata
+- Provenance
+- Interoperability

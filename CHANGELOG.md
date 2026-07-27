@@ -1,4 +1,4 @@
 # Changelog
 
-## Sprint 005
-- Component Pack v1.0 initialized.
+## Sprint 006
+- Machine-readable component foundation.

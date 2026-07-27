@@ -1,6 +1,6 @@
-# ADC Studio – Sprint 005
+# ADC Studio - Sprint 006
 
-## Objective
-Component Pack v1.0
+## Theme
+Machine-readable Component Framework
 
-This sprint focuses on delivering production-ready document components.
+This sprint prepares ADC Studio to interoperate with AI systems and business applications while remaining independent from any specific engine.
