@@ -1,4 +1,4 @@
-# Rapports et données clients
+# Données clients et confidentielles
 clients/
 client-data/
 private/
@@ -6,7 +6,7 @@ confidential/
 real-reports/
 customer-reports/
 
-# Configurations et secrets
+# Secrets et identifiants
 .env
 .env.*
 *.key
@@ -19,7 +19,7 @@ customer-reports/
 secrets.*
 credentials.*
 
-# Documents de travail confidentiels
+# Documents sensibles
 *_confidentiel.*
 *_confidential.*
 *_client.*
@@ -27,7 +27,7 @@ credentials.*
 *_prod.*
 *_final-client.*
 
-# Bases, archives et sauvegardes
+# Sauvegardes, archives et bases
 *.bak
 *.bkp
 *.backup

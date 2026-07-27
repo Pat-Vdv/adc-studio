@@ -1,0 +1,8 @@
+ADC Studio
+Copyright (c) 2026 A.D.C. srl
+
+Tous droits réservés.
+
+Ce dépôt et son contenu sont la propriété d’A.D.C. srl.
+Aucune copie, redistribution, publication, modification ou utilisation
+commerciale n’est autorisée sans accord écrit préalable d’A.D.C. srl.
