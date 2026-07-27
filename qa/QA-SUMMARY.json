@@ -1,7 +1,9 @@
 {
-  "docx_render_pages": 4,
-  "pdf_render_pages": 4,
-  "docx_size": 41156,
-  "pdf_size": 96405,
-  "status": "rendered_and_visually_reviewed"
+  "docx_pages": 5,
+  "pdf_pages": 5,
+  "docx_size": 53851,
+  "dotx_size": 53856,
+  "pdf_size": 102549,
+  "status": "rendered_and_visually_reviewed",
+  "cover_header_footer": "suppressed"
 }
