@@ -1,0 +1,72 @@
+# Rapports et données clients
+clients/
+client-data/
+private/
+confidential/
+real-reports/
+customer-reports/
+
+# Configurations et secrets
+.env
+.env.*
+*.key
+*.pem
+*.pfx
+*.p12
+*.cer
+*.crt
+*.kdbx
+secrets.*
+credentials.*
+
+# Documents de travail confidentiels
+*_confidentiel.*
+*_confidential.*
+*_client.*
+*_production.*
+*_prod.*
+*_final-client.*
+
+# Bases, archives et sauvegardes
+*.bak
+*.bkp
+*.backup
+*.sql
+*.db
+*.sqlite
+*.zip
+*.7z
+*.rar
+
+# Journaux et captures
+*.log
+logs/
+screenshots/private/
+
+# Fichiers temporaires Office
+~$*
+*.tmp
+*.temp
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Génération locale
+build/
+exports/
+output/
+dist/
+
+# Système
+Thumbs.db
+Desktop.ini
+.DS_Store
