@@ -5,6 +5,7 @@ private/
 confidential/
 real-reports/
 customer-reports/
+qa/
 
 # Rapports clients et données potentiellement confidentielles
 rapports-clients/*
