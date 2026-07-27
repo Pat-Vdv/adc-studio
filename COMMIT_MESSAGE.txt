@@ -1,1 +1,1 @@
-Introduce reusable document component library
+Define renderer-independent ADC design system

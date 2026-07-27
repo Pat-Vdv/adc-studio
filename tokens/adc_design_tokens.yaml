@@ -1,0 +1,29 @@
+meta:
+  name: ADC Design System
+  version: 0.4.1
+  status: candidate
+  scope: [Word, PDF]
+
+colors:
+  primary: "#17365D"
+  primary_light: "#DCE6F1"
+  accent: "#2F75B5"
+  accent_light: "#EAF2F8"
+  ink: "#1F2933"
+  muted: "#5F6B76"
+  line: "#D9E2F3"
+  surface: "#F6F8FB"
+  white: "#FFFFFF"
+  success: "#2E7D32"
+  warning: "#B26A00"
+  danger: "#B42318"
+  info: "#2F75B5"
+
+typography:
+  display: "Aptos Display"
+  body: "Aptos"
+  mono: "Consolas"
+
+page:
+  size: A4
+  margins_cm: {top: 2.0, bottom: 1.8, left: 2.2, right: 1.8}
