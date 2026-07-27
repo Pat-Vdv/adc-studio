@@ -1,16 +1,4 @@
 id: C-008
-name: "Timeline"
-slug: "timeline"
-version: "0.1"
-status: "Prototype"
-validated: false
-used: false
-owner: "A.D.C. srl"
-introduced: "Sprint 004.4"
-last_review: "2026-07-27"
-artifacts:
-  docx: null
-  pdf: null
-  preview: null
-used_in: []
-notes: "Component registered during Sprint 004.4."
+name: Timeline
+version: 1.0-draft
+status: Planned

@@ -1,8 +1,1 @@
-feat(components): establish ADC Studio component library foundation
-
-- add PROJECT_STATUS project dashboard
-- add component catalog and lifecycle
-- register C-001 through C-010
-- add metadata and per-component documentation
-- add ADR-0006
-- update README, roadmap, changelog and version
+feat(adc-studio): initialize Sprint 005 Component Pack v1.0
