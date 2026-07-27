@@ -1,7 +1,6 @@
-# ADC Studio – Sprint 008
+# ADC Studio Sprint 009
 
-## Theme
-Reference Report Profiles
+Theme: First End-to-End Reference Report
 
-This sprint introduces document profiles that assemble reusable components
-into complete professional reports.
+Goal:
+Validate the framework by producing a complete report from reusable components.

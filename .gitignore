@@ -6,6 +6,10 @@ confidential/
 real-reports/
 customer-reports/
 
+# Rapports clients et données potentiellement confidentielles
+rapports-clients/*
+!rapports-clients/.gitkeep
+
 # Secrets et identifiants
 .env
 .env.*

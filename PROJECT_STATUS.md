@@ -1,8 +1,9 @@
 # Project Status
 
-Version: 0.8.0
+Version: 0.9.0
 
-Current milestone:
-- Document Profiles
-- First Reference Reports
-- Component orchestration
+Focus:
+- End-to-end validation
+- Reference report
+- Component assembly
+- Feedback loop

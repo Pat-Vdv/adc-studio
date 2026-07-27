@@ -1,7 +1,6 @@
-# Sprint 008
+# Sprint 009
 
-- [ ] SQL Server Audit profile
-- [ ] Linux Audit profile
-- [ ] Incident Report profile
-- [ ] Profile specification
-- [ ] Integration guidelines
+- [ ] Build SQL Server reference report
+- [ ] Validate all components
+- [ ] Record improvement points
+- [ ] Prepare rendering pipeline

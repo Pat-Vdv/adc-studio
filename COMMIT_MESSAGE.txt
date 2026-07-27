@@ -1,1 +1,1 @@
-feat(adc-studio): introduce document profiles and reference reports
+feat(adc-studio): first reference report validation
