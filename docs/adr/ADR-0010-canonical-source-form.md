@@ -92,6 +92,12 @@ hors contrat, il relève du contrat d'un autre composant. Deux conséquences :
 - un champ décrit par deux composants doit l'être de la même manière. Une
   divergence est un désaccord de contrat, jamais une spécialisation locale.
 
+Le partage se constate **noeud par noeud** ; il ne se propage pas aux
+descendants. `report` est partagé, mais `report.revisions` n'est lu que par
+C-002, qui le possède donc en propre et le ferme. Un noeud ouvert peut porter
+des sous-noeuds fermés : l'ouverture n'est pas une propriété héritée, c'est le
+constat d'une lecture multiple.
+
 ## Origine d'une contrainte
 
 Avant d'ajouter une contrainte, il faut savoir **d'où elle tire sa légitimité**.
