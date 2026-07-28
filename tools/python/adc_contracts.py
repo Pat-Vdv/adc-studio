@@ -29,6 +29,7 @@ sortie, ni du validateur.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +44,7 @@ EXAMPLE_FILE = "example.json"
 
 ROOT_PATH = "$"
 
-# Où lire, dans une source, le fragment que chaque composant consomme (ADR-0010).
+# Où lire, dans une source, le fragment que chaque consommateur lit (ADR-0010).
 # Le nom du noeud ne se déduit pas de l'identifiant : C-007 lit `actions_taken`.
 #
 #   NODE       le noeud lui-même
@@ -52,20 +53,42 @@ ROOT_PATH = "$"
 #   SOURCE     la source entière, dont le builder prélève plusieurs noeuds
 NODE, COLLECTION, OCCURRENCE, SOURCE = "node", "collection", "occurrence", "source"
 
+# Nature d'un fragment. Un composant catalogue porte un contrat ; un fragment
+# racine est consommé par un builder sans avoir d'identité de bibliothèque, et
+# n'est donc confronté à aucun schéma. Le déclarer ne lui accorde aucune
+# couverture : cela nomme son consommateur, et laisse voir ce qui manque.
+CATALOG_COMPONENT, ROOT_FRAGMENT = "catalog_component", "root_fragment"
+
+
+@dataclass(frozen=True)
+class Fragment:
+    """Un fragment source : sa nature, comment le lire, et où."""
+
+    nature: str
+    kind: str
+    path: str
+
+
 # Table de la famille « rapport d'incident » (profil P-003). Elle appartient à
 # une famille de rapports, pas à la bibliothèque : une autre famille nommerait
-# les mêmes composants autrement.
-INCIDENT_REPORT_FRAGMENTS: dict[str, tuple[str, str]] = {
-    "C-001-cover": (SOURCE, ROOT_PATH),
-    "C-002-identity-page": (SOURCE, ROOT_PATH),
-    "C-003-executive-summary": (NODE, "executive_summary"),
-    "C-004-finding": (OCCURRENCE, "findings"),
-    "C-005-recommendation": (OCCURRENCE, "recommendations"),
-    "C-006-risk": (OCCURRENCE, "risks"),
-    "C-007-decision": (OCCURRENCE, "actions_taken"),
-    "C-008-timeline": (COLLECTION, "timeline"),
-    "C-009-environment": (NODE, "environment"),
-    "C-010-evidence": (OCCURRENCE, "evidence"),
+# les mêmes composants autrement. La clé est l'identifiant du composant pour un
+# composant catalogue, le nom du noeud pour un fragment racine.
+INCIDENT_REPORT_FRAGMENTS: dict[str, Fragment] = {
+    "C-001-cover": Fragment(CATALOG_COMPONENT, SOURCE, ROOT_PATH),
+    "C-002-identity-page": Fragment(CATALOG_COMPONENT, SOURCE, ROOT_PATH),
+    "C-003-executive-summary": Fragment(CATALOG_COMPONENT, NODE, "executive_summary"),
+    "C-004-finding": Fragment(CATALOG_COMPONENT, OCCURRENCE, "findings"),
+    "C-005-recommendation": Fragment(CATALOG_COMPONENT, OCCURRENCE, "recommendations"),
+    "C-006-risk": Fragment(CATALOG_COMPONENT, OCCURRENCE, "risks"),
+    "C-007-decision": Fragment(CATALOG_COMPONENT, OCCURRENCE, "actions_taken"),
+    "C-008-timeline": Fragment(CATALOG_COMPONENT, COLLECTION, "timeline"),
+    "C-009-environment": Fragment(CATALOG_COMPONENT, NODE, "environment"),
+    "C-010-evidence": Fragment(CATALOG_COMPONENT, OCCURRENCE, "evidence"),
+    # Blocs `narrative` du profil : bâtis par des builders, sans contrat.
+    "incident_context": Fragment(ROOT_FRAGMENT, NODE, "incident_context"),
+    "probable_cause": Fragment(ROOT_FRAGMENT, NODE, "probable_cause"),
+    "conclusion": Fragment(ROOT_FRAGMENT, NODE, "conclusion"),
+    "investigations": Fragment(ROOT_FRAGMENT, OCCURRENCE, "investigations"),
 }
 
 
@@ -163,14 +186,14 @@ def validate_fragment(component_id: str, fragment: Any, *, at: str = ROOT_PATH) 
 
 
 def validate_report(
-    data: Any, fragments: dict[str, tuple[str, str]] | None = None
+    data: Any, fragments: dict[str, Fragment] | None = None
 ) -> tuple[str, ...]:
     """Rendu textuel de `report_diagnostics`."""
     return tuple(str(diagnostic) for diagnostic in report_diagnostics(data, fragments))
 
 
 def report_diagnostics(
-    data: Any, fragments: dict[str, tuple[str, str]] | None = None
+    data: Any, fragments: dict[str, Fragment] | None = None
 ) -> tuple[ValidationDiagnostic, ...]:
     """Écarts de forme d'une source entière, contrat par contrat.
 
@@ -187,14 +210,18 @@ def report_diagnostics(
       d'occurrence ;
     - toute règle globale : unicité, références, cohérences inter-composants.
 
-    Un noeud source qu'aucun contrat ne réclame n'est vérifié par personne : la
-    table est la seule description de cette couverture (ADR-0010).
+    Un fragment racine n'est confronté à aucun schéma : il n'en a pas. Sa
+    présence dans la table nomme son consommateur, elle ne lui accorde aucune
+    couverture — la table est la seule description de ce partage (ADR-0010).
     """
     table = INCIDENT_REPORT_FRAGMENTS if fragments is None else fragments
     is_source = isinstance(data, dict)
     diagnostics: list[ValidationDiagnostic] = []
 
-    for component_id, (kind, path) in table.items():
+    for component_id, fragment_spec in table.items():
+        if fragment_spec.nature != CATALOG_COMPONENT:
+            continue  # un fragment racine n'a pas de schéma à opposer
+        kind, path = fragment_spec.kind, fragment_spec.path
         if kind != SOURCE and (not is_source or path not in data):
             continue
         # Chargé une fois par composant : une collection de cent occurrences ne

@@ -22,20 +22,20 @@ FRAGMENTS = adc_contracts.INCIDENT_REPORT_FRAGMENTS
 # entière : la table les désigne par `$`, jamais par leur nom.
 _NODES_READ_FROM_SOURCE = ("report", "client")
 
-# Noeuds de la source de la famille P-003 qu'aucun contrat ne réclame. Les
-# quatre premiers sont pourtant consommés : ce sont les blocs `narrative` du
-# profil, bâtis par des builders sans être des composants du catalogue. La
-# liste est explicite pour que le trou reste visible (ADR-0010) ; elle échoue
-# aussi bien quand un de ces noeuds gagne un contrat que lorsqu'un noeud
-# nouveau apparaît sans en avoir un.
-SOURCE_NODES_WITHOUT_CONTRACT = (
-    "annexes",
-    "conclusion",
-    "incident_context",
-    "investigations",
-    "probable_cause",
-    "schema_version",
-)
+# Noeuds de la source qui ne sont le fragment de personne : aucun builder ne
+# les lit. Ni composants catalogue, ni fragments racine — les suivre à part
+# évite de les confondre avec une couverture manquante (ADR-0010). La liste
+# échoue dans les deux sens : un noeud qui trouve un consommateur doit la
+# quitter, un noeud nouveau doit y entrer ou entrer dans la table.
+SOURCE_NODES_CONSUMED_BY_NOBODY = ("annexes", "schema_version")
+
+
+def _catalog_components() -> dict:
+    return {k: f for k, f in FRAGMENTS.items() if f.nature == adc_contracts.CATALOG_COMPONENT}
+
+
+def _root_fragments() -> dict:
+    return {k: f for k, f in FRAGMENTS.items() if f.nature == adc_contracts.ROOT_FRAGMENT}
 
 
 def _reference_source() -> dict:
@@ -55,15 +55,15 @@ def _reference_source() -> dict:
 def test_every_component_of_the_library_is_located():
     # Un composant nouveau doit entrer dans la table, sans quoi son contrat ne
     # serait jamais confronté à une source réelle.
-    assert set(FRAGMENTS) == set(adc_contracts.component_ids())
+    assert set(_catalog_components()) == set(adc_contracts.component_ids())
 
 
 def test_every_located_path_exists_in_the_reference_source():
     source = _reference_source()
     absent = [
-        path
-        for kind, path in FRAGMENTS.values()
-        if kind != adc_contracts.SOURCE and path not in source
+        fragment.path
+        for fragment in FRAGMENTS.values()
+        if fragment.kind != adc_contracts.SOURCE and fragment.path not in source
     ]
     assert absent == [], "chemin sans contrepartie dans la source de référence"
 
@@ -71,18 +71,43 @@ def test_every_located_path_exists_in_the_reference_source():
 def test_every_node_of_the_reference_source_is_located_or_tracked():
     """La table dit ce qui est couvert, donc aussi ce qui ne l'est pas.
 
-    Ce test échoue dans les deux sens : un noeud qui gagne un contrat sans
-    quitter le suivi, comme un noeud source apparu sans contrat ni suivi.
+    Ce test échoue dans les deux sens : un noeud qui trouve un consommateur
+    sans entrer dans la table, comme un noeud nouveau que rien ne déclare.
     """
-    located = {path for kind, path in FRAGMENTS.values() if kind != adc_contracts.SOURCE}
-    uncovered = set(_reference_source()) - located - set(_NODES_READ_FROM_SOURCE)
-    assert uncovered == set(SOURCE_NODES_WITHOUT_CONTRACT)
+    located = {f.path for f in FRAGMENTS.values() if f.kind != adc_contracts.SOURCE}
+    unclaimed = set(_reference_source()) - located - set(_NODES_READ_FROM_SOURCE)
+    assert unclaimed == set(SOURCE_NODES_CONSUMED_BY_NOBODY)
+
+
+def test_a_root_fragment_is_declared_without_being_covered():
+    """Être dans la table n'accorde aucune couverture (ADR-0010).
+
+    Les blocs `narrative` y nomment leur consommateur ; aucun schéma ne leur
+    est opposé, et ce test échouera le jour où l'un d'eux gagnera un contrat —
+    il faudra alors le déclarer composant catalogue, pas l'y laisser.
+    """
+    assert set(_root_fragments()) == {
+        "incident_context",
+        "probable_cause",
+        "conclusion",
+        "investigations",
+    }
+    for name in _root_fragments():
+        assert not adc_contracts.has_contract(name)
+
+
+def test_a_root_fragment_is_never_validated():
+    source = _reference_source()
+    source["incident_context"] = {"n'importe quoi": 42}
+    source["conclusion"] = ["forme libre", 1, None]
+    assert adc_contracts.report_diagnostics(source) == ()
 
 
 def test_the_decision_component_does_not_read_the_node_its_name_suggests():
     # Le nom du noeud ne se déduit pas de l'identifiant du composant : c'est
     # pourquoi la localisation est une table et non une convention.
-    assert FRAGMENTS["C-007-decision"] == (adc_contracts.OCCURRENCE, "actions_taken")
+    decision = FRAGMENTS["C-007-decision"]
+    assert (decision.kind, decision.path) == (adc_contracts.OCCURRENCE, "actions_taken")
     assert "decisions" not in _reference_source()
 
 
