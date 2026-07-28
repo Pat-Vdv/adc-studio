@@ -18,6 +18,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-006-risk
   - C-010-evidence
   - narrative :: incident-context
+  - narrative-investigation
 """
 from __future__ import annotations
 
@@ -207,6 +208,21 @@ def _entry_by_id(raw: Any, instance_id: str) -> dict[str, Any]:
     )
 
 
+def _build_investigation(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Investigation : l'occurrence de `investigations` portant `instance_id`.
+
+    Le résultat est repris tel que déclaré — jamais déduit de la description,
+    jamais traduit : aucun vocabulaire n'est déclaré pour ce champ.
+    """
+    source = _entry_by_id(data.get("investigations"), instance_id)
+    return {
+        "id": source.get("id"),
+        "title": source.get("title"),
+        "description": _paragraphs(source.get("description")),
+        "result": source.get("result"),
+    }
+
+
 def _build_finding(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     """Constat : l'occurrence dont l'identifiant est `instance_id`.
 
@@ -377,6 +393,7 @@ _BUILDERS: dict[BuilderKey, Builder] = _registry(
         ("C-006-risk", None, _build_risk),
         ("C-010-evidence", None, _build_evidence),
         ("narrative", "incident-context", _build_incident_context),
+        ("narrative-investigation", None, _build_investigation),
     )
 )
 

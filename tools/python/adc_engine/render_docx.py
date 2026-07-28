@@ -14,6 +14,7 @@ substitution). Développement incrémental — composants rendus :
   - C-006-risk
   - C-010-evidence
   - narrative :: incident-context
+  - narrative-investigation
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -411,6 +412,21 @@ def _render_incident_context(docx: Any, instance: ComponentInstance, context: di
         docx.add_paragraph(str(block))
 
 
+def _render_investigation(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
+    payload = instance.payload
+
+    # Section autonome par occurrence, dans l'ordre de la source : aucun titre
+    # de partie commun, renderer sans état.
+    title = payload.get("title")
+    docx.add_heading(f"Investigation — {title}" if title else "Investigation", level=1)
+
+    # Valeur déclarée par la source : aucun vocabulaire, donc aucune traduction.
+    _add_label_value(docx, "Résultat", payload.get("result"))
+
+    for block in payload.get("description") or ():
+        docx.add_paragraph(str(block))
+
+
 def _registry(
     entries: tuple[tuple[str, str | None, Renderer], ...]
 ) -> dict[RendererKey, Renderer]:
@@ -439,6 +455,7 @@ _RENDERERS: dict[RendererKey, Renderer] = _registry(
         ("C-006-risk", None, _render_risk),
         ("C-010-evidence", None, _render_evidence),
         ("narrative", "incident-context", _render_incident_context),
+        ("narrative-investigation", None, _render_investigation),
     )
 )
 

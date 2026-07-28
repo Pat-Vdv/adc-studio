@@ -249,6 +249,61 @@ def test_incident_context_absent_renders_no_section(tmp_path):
     assert "Environnement" in text  # le reste du rapport est intact
 
 
+def test_investigation_is_rendered_as_its_own_section(tmp_path):
+    data = _data()
+    data["investigations"][0]["description"] = "Contrôles exécutés.\n\nSeconde partie."
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Investigation — Analyse de l’environnement SQL Server" in paragraphs
+    assert "Résultat : TODO" in paragraphs  # valeur déclarée, non traduite
+    assert "Contrôles exécutés." in paragraphs
+    assert "Seconde partie." in paragraphs
+    assert "Investigations" not in paragraphs  # aucun titre de partie commun
+
+
+def test_investigations_are_rendered_in_source_order(tmp_path):
+    data = _data()
+    data["investigations"].append(
+        {
+            "id": "investigation-000",
+            "title": "A — Analyse préliminaire",
+            "description": "Contrôles préalables.",
+            "result": "inconclusive",
+        }
+    )
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    first = paragraphs.index("Investigation — Analyse de l’environnement SQL Server")
+    second = paragraphs.index("Investigation — A — Analyse préliminaire")
+    assert first < second  # ni identifiant ni titre ne réordonnent le rendu
+
+
+def test_investigation_omits_absent_result(tmp_path):
+    data = _data()
+    data["investigations"] = [{"id": "investigation-001", "title": "Sans détail"}]
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    start = paragraphs.index("Investigation — Sans détail")
+    section = paragraphs[start : paragraphs.index("Constat — Blocage observé pendant DBCC CHECKDB")]
+    assert not any(p.startswith("Résultat") for p in section)
+
+
+def test_investigation_does_not_leak_identifiers(tmp_path):
+    out = render_docx(compose_document(_data()), tmp_path / "report.docx")
+    assert "investigation-001" not in _texts(out)
+
+
+def test_investigations_absent_render_no_section(tmp_path):
+    data = _data()
+    data.pop("investigations")
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    # Le titre du rapport commence lui aussi par « Investigation — » : on cible
+    # donc la section, pas une sous-chaîne du document.
+    assert "Investigation — Analyse de l’environnement SQL Server" not in paragraphs
+    assert "Constat — Blocage observé pendant DBCC CHECKDB" in paragraphs  # reste intact
+
+
 def test_finding_is_rendered_as_its_own_section(tmp_path):
     data = _data()
     data["findings"][0]["observation"] = "Symptôme attesté.\n\nSecond paragraphe."
