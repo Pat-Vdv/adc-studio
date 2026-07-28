@@ -132,13 +132,35 @@ aucun schéma, et rien ne le signalerait :
 > dans les deux sens.
 
 C'est la discipline déjà appliquée aux composants sans contrat, portée au
-niveau du rapport. Elle rend visible un trou que l'inventaire des composants ne
+niveau du rapport. Elle rend visible ce que l'inventaire des composants ne
 pouvait pas voir : les blocs `narrative` — contexte de l'incident, cause
-probable, conclusion, investigations — sont consommés par des builders sans être
-des composants du catalogue. Ils n'ont donc ni répertoire, ni schéma, ni
-exemple, et aucun test ne les réclamait.
+probable, conclusion, investigations — sont consommés par des builders sans
+être des composants du catalogue.
 
-Ce constat ne se corrige pas ici : il nomme le travail restant.
+### Nature d'un fragment
+
+Ces blocs ne deviennent pas pour autant des composants. La table distingue deux
+natures :
+
+| Nature | Ce que c'est | Contrat |
+|---|---|---|
+| composant catalogue | une unité de la bibliothèque : répertoire, schéma, exemple, identité stable | oui |
+| fragment racine | un nœud consommé par un builder, sans identité de catalogue | non |
+
+Créer quatre pseudo-composants pour combler le trou déformerait l'architecture
+afin de faire entrer un manque dans un moule existant : ces blocs n'ont ni
+identifiant de catalogue, ni réutilisation d'une famille de rapports à l'autre.
+Les déclarer comme fragments racine décrit ce qui est, et rend leur absence de
+contrat lisible au lieu de l'inventer ailleurs.
+
+Un fragment racine n'est confronté à aucun schéma. Sa présence dans la table
+n'accorde donc aucune couverture : elle nomme un consommateur, et laisse voir
+qu'aucun contrat ne le sert.
+
+Reste ce qui n'est le fragment de personne — `schema_version`, `annexes` —
+qu'aucun builder ne lit. Ni composant, ni fragment racine : ces nœuds sont
+suivis à part, faute de quoi on les confondrait avec une couverture manquante
+alors qu'ils ne demandent rien.
 
 ## Origine d'une contrainte
 
