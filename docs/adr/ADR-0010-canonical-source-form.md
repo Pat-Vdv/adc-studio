@@ -41,6 +41,40 @@ Une tolérance ne devient contrat que par une **promotion explicite**, c'est-à-
 un commit qui fait évoluer ensemble le schéma, l'exemple et les tests — jamais
 par simple constat de son existence dans le code.
 
+## Portée d'un schéma de composant
+
+Une seule règle détermine ce qu'un `schema.json` décrit :
+
+> Le `schema.json` d'un composant décrit exactement le fragment source
+> **consommé par son builder**, ni plus ni moins.
+
+Elle explique, sans convention particulière, que la forme du schéma varie d'un
+composant à l'autre :
+
+| Composant | Ce que le builder reçoit | Forme du schéma |
+|---|---|---|
+| C-003 Executive Summary | le noeud `executive_summary` | objet |
+| C-009 Environment | le noeud `environment` | objet |
+| C-008 Timeline | la collection `timeline` entière | tableau |
+| C-004 Finding | **une** occurrence de `findings` | objet |
+
+Un composant répétable décrit donc **une occurrence**. La collection qui les
+porte — sa présence, sa cardinalité, l'unicité de ses identifiants — relève du
+noeud parent et du profil, jamais du schéma du composant.
+
+## Contraintes de structure et règles métier
+
+Deux natures de contraintes cohabitent dans un schéma, et seule la seconde
+demande une attestation dans le domaine :
+
+- **Structure** — `type`, `additionalProperties: false`, et `minLength: 1` sur
+  un identifiant. Un identifiant vide n'a aucune sémantique : il ne permet ni
+  référence, ni résolution, ni unicité, ni diagnostic utile. Ces contraintes
+  peuvent être posées même quand l'implémentation ne les vérifie pas encore.
+- **Règles métier** — `enum`, bornes numériques, `format`, longueurs minimales
+  sur du texte rédigé. Elles ne sont posées que si un vocabulaire ou une règle
+  existe déjà et est attesté, jamais par intuition à partir du nom d'un champ.
+
 ## Conséquences
 
 - Un schéma n'est pas élargi au motif que l'implémentation accepte davantage.
