@@ -1,6 +1,6 @@
 # Project Status
 
-Version: 0.9.0
+Version du dépôt : voir le fichier VERSION
 
 Focus:
 - End-to-end validation
