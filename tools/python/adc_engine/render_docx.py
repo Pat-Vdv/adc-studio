@@ -7,6 +7,7 @@ substitution). Développement incrémental — composants rendus :
   - C-002-identity-page
   - C-003-executive-summary
   - C-009-environment
+  - C-008-timeline
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -190,11 +191,29 @@ def _render_environment(docx: Any, instance: ComponentInstance) -> None:
         _add_table(docx, _STORAGE_COLUMNS, storage)
 
 
+_TIMELINE_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("timestamp", "Horodatage"),
+    ("title", "Événement"),
+    ("description", "Description"),
+)
+
+
+def _render_timeline(docx: Any, instance: ComponentInstance) -> None:
+    entries = instance.payload.get("entries") or ()
+    if not entries:
+        return  # chronologie vide : pas de titre, pas de tableau
+
+    # Section courante du corps, dans l'ordre de la source.
+    docx.add_heading(instance.payload.get("heading") or "Chronologie", level=1)
+    _add_table(docx, _TIMELINE_COLUMNS, entries)
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
     "C-002-identity-page": _render_identity_page,
     "C-003-executive-summary": _render_executive_summary,
     "C-009-environment": _render_environment,
+    "C-008-timeline": _render_timeline,
 }
 
 

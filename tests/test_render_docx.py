@@ -154,6 +154,50 @@ def test_environment_without_storage_has_no_table(tmp_path):
     assert _table_rows(out, ["Volume", "Rôle", "Unité d'allocation (Ko)"]) == []
 
 
+_TIMELINE_HEADER = ["Horodatage", "Événement", "Description"]
+
+
+def test_timeline_table_follows_source_order(tmp_path):
+    data = _data()
+    data["timeline"].append(
+        {
+            "id": "timeline-000",
+            "timestamp": "2026-07-22",
+            "title": "Signalement",
+            "description": "Appel du client.",
+        }
+    )
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    assert "Chronologie" in _texts(out)
+    rows = _table_rows(out, _TIMELINE_HEADER)
+    assert rows[1] == [
+        "2026-07-23",
+        "Sauvegardes préalables",
+        "Sauvegardes complètes et VERIFYONLY réalisés avant intervention.",
+    ]
+    assert [row[0] for row in rows[1:]] == ["2026-07-23", "2026-07-22"]  # ordre source
+
+
+def test_timeline_empty_renders_no_section(tmp_path):
+    # Instance présente mais sans entrée : ni titre ni tableau vide.
+    data = _data()
+    data["timeline"] = ["entrée invalide ignorée"]
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    assert "Chronologie" not in _texts(out)
+    assert _table_rows(out, _TIMELINE_HEADER) == []
+
+
+def test_timeline_absent_renders_no_section(tmp_path):
+    data = _data()
+    data.pop("timeline")
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    assert "Chronologie" not in _texts(out)
+    assert "Environnement" in _texts(out)  # le reste du rapport est intact
+
+
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):
     document = compose_document(_data())
     # Injecte une instance sans renderer : le rendu ne doit ni planter ni la rendre.

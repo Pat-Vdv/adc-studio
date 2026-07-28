@@ -10,6 +10,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-002-identity-page
   - C-003-executive-summary
   - C-009-environment
+  - C-008-timeline
 """
 from __future__ import annotations
 
@@ -136,11 +137,24 @@ def _build_environment(data: dict[str, Any], instance_id: str) -> dict[str, Any]
     }
 
 
+def _build_timeline(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Chronologie : une entrée par événement, dans l'ordre de la source.
+
+    Aucun tri, aucune date déduite, aucun statut inféré : la chronologie rendue
+    est exactement celle que la source déclare.
+    """
+    return {
+        "heading": "Chronologie",
+        "entries": _rows(data.get("timeline"), ("id", "timestamp", "title", "description")),
+    }
+
+
 _BUILDERS: dict[str, Builder] = {
     "C-001-cover": _build_cover,
     "C-002-identity-page": _build_identity_page,
     "C-003-executive-summary": _build_executive_summary,
     "C-009-environment": _build_environment,
+    "C-008-timeline": _build_timeline,
 }
 
 

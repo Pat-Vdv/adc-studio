@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from adc_engine import Document, compose_document
+from adc_engine import ComponentInstance, Document, compose_document
 from adc_engine.resolve import resolve
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -150,6 +150,53 @@ def test_environment_tolerates_missing_fields():
     assert environment.payload["storage"] == ()
 
 
+def _timeline(doc) -> ComponentInstance:
+    """Instance C-008 du document, localisée par son identifiant de composant."""
+    return next(c for c in doc.components if c.component_id == "C-008-timeline")
+
+
+def test_timeline_is_composed_in_source_order():
+    data = _data()
+    data["timeline"].append(
+        {
+            "id": "timeline-000",
+            "timestamp": "2026-07-22",
+            "title": "Signalement",
+            "description": "Appel du client.",
+        }
+    )
+    timeline = _timeline(compose_document(data))
+    assert timeline.instance_id == "timeline"
+    # Aucun tri : l'entrée ajoutée en fin de source reste en fin de payload,
+    # bien que son horodatage soit antérieur.
+    assert [e["timestamp"] for e in timeline.payload["entries"]] == ["2026-07-23", "2026-07-22"]
+    assert timeline.payload["entries"][0] == {
+        "id": "timeline-001",
+        "timestamp": "2026-07-23",
+        "title": "Sauvegardes préalables",
+        "description": "Sauvegardes complètes et VERIFYONLY réalisés avant intervention.",
+    }
+
+
+def test_timeline_entries_have_homogeneous_fields():
+    data = _data()
+    data["timeline"] = [{"id": "t1", "title": "Sans horodatage"}, "entrée invalide ignorée"]
+    entries = _timeline(compose_document(data)).payload["entries"]
+    assert len(entries) == 1
+    assert set(entries[0]) == {"id", "timestamp", "title", "description"}
+    assert entries[0]["timestamp"] is None  # champ absent, jamais déduit
+
+
+def test_timeline_absent_produces_no_instance():
+    # La chronologie est optionnelle (0..1) : absente de la source, elle n'est
+    # ni instanciée ni diagnostiquée.
+    data = _data()
+    data.pop("timeline")
+    doc = compose_document(data)
+    assert not any(c.component_id == "C-008-timeline" for c in doc.components)
+    assert not any("C-008-timeline" in d for d in doc.diagnostics)
+
+
 def test_narrative_incident_context_stays_diagnosed():
     # Le bloc narratif n'est pas un composant du catalogue : il reste un
     # diagnostic tant qu'aucun builder dédié n'est livré.
@@ -158,16 +205,17 @@ def test_narrative_incident_context_stays_diagnosed():
 
 
 def test_unsupported_components_are_reported_not_crashed():
-    # À ce stade, C-001 à C-003 et C-009 ont un builder : les autres composants
-    # résolus doivent produire un diagnostic, jamais une exception.
+    # À ce stade, C-001 à C-003, C-009 et C-008 ont un builder : les autres
+    # composants résolus doivent produire un diagnostic, jamais une exception.
     doc = compose_document(_data())
     assert any("C-004-finding" in d for d in doc.diagnostics)
-    assert not any("C-009-environment" in d for d in doc.diagnostics)
+    assert not any("C-008-timeline" in d for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
         "C-003-executive-summary",
         "C-009-environment",
+        "C-008-timeline",
     ]
 
 
