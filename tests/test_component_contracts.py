@@ -267,6 +267,86 @@ def test_environment_example_covers_the_whole_contract():
     assert all(set(volume) == set(volume_fields) for volume in example["storage"])
 
 
+# --- C-008 Timeline --------------------------------------------------------
+
+C_008 = "C-008-timeline"
+
+
+def _timeline_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_008), component=C_008
+    )
+
+
+def test_timeline_of_the_reference_report_is_valid():
+    assert _timeline_errors(_reference_source()["timeline"]) == ()
+
+
+def test_timeline_accepts_an_empty_collection():
+    # Cardinalité et présence relèvent du profil, pas du schéma local.
+    assert _timeline_errors([]) == ()
+
+
+def test_timeline_accepts_a_partial_entry():
+    assert _timeline_errors([{"title": "Signalement"}]) == ()
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    ["2026-07-23", "2026-07-23T10:15:00Z", "23/07/2026", "matinée du 23 juillet"],
+)
+def test_timeline_imposes_no_timestamp_format(timestamp):
+    # Aucun format n'est attesté : le nom du champ ne fait pas contrat.
+    assert _timeline_errors([{"id": "timeline-001", "timestamp": timestamp}]) == ()
+
+
+def test_timeline_rejects_a_non_textual_timestamp():
+    errors = _timeline_errors([{"id": "timeline-001", "timestamp": 20260723}])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_008}: $[0].timestamp: ")
+
+
+def test_timeline_rejects_an_empty_identifier():
+    errors = _timeline_errors([{"id": ""}])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_008}: $[0].id: ")
+
+
+def test_timeline_rejects_an_unknown_field():
+    errors = _timeline_errors([{"id": "timeline-001", "auteur": "A.D.C. srl"}])
+    assert len(errors) == 1
+    assert "auteur" in errors[0]
+
+
+def test_timeline_rejects_a_non_object_entry():
+    errors = _timeline_errors(["2026-07-23"])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_008}: $[0]: ")
+
+
+def test_timeline_rejects_a_non_array_fragment():
+    errors = _timeline_errors({"entries": []})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_008}: $: ")
+
+
+def test_timeline_says_nothing_about_order():
+    # Propriété globale : elle appartient à la composition et à ses tests.
+    unordered = [
+        {"id": "timeline-002", "timestamp": "2026-07-24"},
+        {"id": "timeline-001", "timestamp": "2026-07-23"},
+    ]
+    assert _timeline_errors(unordered) == ()
+    assert _timeline_errors(list(reversed(unordered))) == ()
+
+
+def test_timeline_example_covers_the_whole_contract():
+    example = adc_contracts.load_json(adc_contracts.example_path(C_008))
+    entry_fields = adc_contracts.load_schema(C_008)["items"]["properties"]
+    assert example, "exemple vide : il ne démontrerait aucun contrat"
+    assert all(set(entry) == set(entry_fields) for entry in example)
+
+
 def test_components_without_contract_are_exactly_the_declared_ones():
     """Suivi explicite des trous restants, plutôt qu'un silence.
 

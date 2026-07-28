@@ -1,4 +1,14 @@
-{
-  "component_id":"",
-  "component_version":"1.0"
-}
+[
+  {
+    "id": "timeline-001",
+    "timestamp": "2026-07-23",
+    "title": "Sauvegardes préalables",
+    "description": "Sauvegardes complètes et VERIFYONLY réalisés avant intervention."
+  },
+  {
+    "id": "timeline-002",
+    "timestamp": "2026-07-24",
+    "title": "Contrôle d'intégrité",
+    "description": "Exécution de DBCC CHECKDB sur la base principale."
+  }
+]

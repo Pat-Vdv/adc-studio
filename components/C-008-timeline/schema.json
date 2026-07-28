@@ -1,5 +1,29 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-008 Timeline — fragment source",
+  "description": "Forme du noeud `timeline` de la source : la collection entière, puisque c'est ce que le composant consomme. Le schéma valide chaque entrée ; l'ordre des événements est celui de la source et relève de la composition, jamais du schéma.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Identifiant de l'événement, stable dans le document."
+      },
+      "timestamp": {
+        "type": "string",
+        "description": "Moment de l'événement, tel que la source le déclare. Aucun format n'est imposé : le domaine n'a pas encore arrêté s'il s'agit d'une date ou d'un instant."
+      },
+      "title": {
+        "type": "string",
+        "description": "Intitulé court de l'événement."
+      },
+      "description": {
+        "type": "string",
+        "description": "Ce qui a été fait ou observé."
+      }
+    }
+  }
 }
