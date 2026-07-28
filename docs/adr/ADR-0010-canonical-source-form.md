@@ -98,6 +98,48 @@ C-002, qui le possède donc en propre et le ferme. Un noeud ouvert peut porter
 des sous-noeuds fermés : l'ouverture n'est pas une propriété héritée, c'est le
 constat d'une lecture multiple.
 
+## Localisation d'un fragment dans la source
+
+Un `schema.json` décrit la **forme** d'un fragment ; rien n'y dit **où** ce
+fragment se lit dans une source. Tant que les contrats n'ont servi qu'à leurs
+propres tests, cette connaissance a pu rester implicite — répartie entre les
+builders, qui la portent en dur, et les tests, qui la réécrivent composant par
+composant. Valider une source entière l'exige explicite.
+
+Cette localisation est une **table**, pas une convention : le nom du nœud ne se
+déduit pas de l'identifiant du composant. C-007 Decision lit `actions_taken`.
+
+| Nature | Ce qui est validé | Exemple |
+|---|---|---|
+| nœud | le nœud lui-même | C-003 → `executive_summary` |
+| collection | la collection entière | C-008 → `timeline` |
+| occurrence | chaque entrée, une validation par entrée | C-004 → `findings[*]` |
+| racine | la source entière | C-001, C-002 |
+
+La table appartient à une **famille de rapports**, non à la bibliothèque : deux
+familles nomment différemment les mêmes composants. Son hébergement naturel à
+terme est le profil, qui déclare déjà quels composants constituent la famille ;
+elle reste hors du profil tant qu'une seule famille possède des builders.
+
+### Un nœud que personne ne réclame
+
+La table dit ce qui est couvert ; elle dit donc aussi, par différence, ce qui ne
+l'est pas. Un nœud source qu'aucun contrat ne réclame ne serait vérifié par
+aucun schéma, et rien ne le signalerait :
+
+> Un nœud source hors de la table est **suivi explicitement**, jamais ignoré en
+> silence. La liste des nœuds sans contrat est une donnée du dépôt, vérifiée
+> dans les deux sens.
+
+C'est la discipline déjà appliquée aux composants sans contrat, portée au
+niveau du rapport. Elle rend visible un trou que l'inventaire des composants ne
+pouvait pas voir : les blocs `narrative` — contexte de l'incident, cause
+probable, conclusion, investigations — sont consommés par des builders sans être
+des composants du catalogue. Ils n'ont donc ni répertoire, ni schéma, ni
+exemple, et aucun test ne les réclamait.
+
+Ce constat ne se corrige pas ici : il nomme le travail restant.
+
 ## Origine d'une contrainte
 
 Avant d'ajouter une contrainte, il faut savoir **d'où elle tire sa légitimité**.
