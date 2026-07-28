@@ -42,6 +42,11 @@ def incident_profile() -> Profile:
 # Un builder reçoit (data_source, instance_id) et retourne le payload de rendu.
 Builder = Callable[[dict[str, Any], str], dict[str, Any]]
 
+# Identité d'un bloc pour le dispatch : composant, et occurrence nommée si le
+# profil en déclare une. Plusieurs blocs peuvent partager un `component_id` —
+# les blocs narratifs, notamment — et viser des builders différents.
+BuilderKey = tuple[str, str | None]
+
 
 def _rows(raw: Any, fields: tuple[str, ...]) -> tuple[dict[str, Any], ...]:
     """Normalise une liste d'objets source en lignes aux champs connus.
@@ -323,18 +328,50 @@ def _unresolved_references(
     return tuple(unresolved)
 
 
-_BUILDERS: dict[str, Builder] = {
-    "C-001-cover": _build_cover,
-    "C-002-identity-page": _build_identity_page,
-    "C-003-executive-summary": _build_executive_summary,
-    "C-009-environment": _build_environment,
-    "C-008-timeline": _build_timeline,
-    "C-004-finding": _build_finding,
-    "C-007-decision": _build_decision,
-    "C-005-recommendation": _build_recommendation,
-    "C-006-risk": _build_risk,
-    "C-010-evidence": _build_evidence,
-}
+def _registry(entries: tuple[tuple[str, str | None, Builder], ...]) -> dict[BuilderKey, Builder]:
+    """Table des builders, indexée par identité de bloc.
+
+    Un littéral de dictionnaire écraserait silencieusement une clé répétée :
+    la construction passe donc par ici, qui refuse le doublon à l'import.
+    """
+    registry: dict[BuilderKey, Builder] = {}
+    for component_id, instance_id, builder in entries:
+        key = (component_id, instance_id)
+        if key in registry:
+            raise ValueError(f"builder déclaré deux fois: {component_id} :: {instance_id or '*'}")
+        registry[key] = builder
+    return registry
+
+
+# (component_id, instance_id, builder). `None` en instance = builder générique,
+# valable pour toutes les occurrences du composant.
+_BUILDERS: dict[BuilderKey, Builder] = _registry(
+    (
+        ("C-001-cover", None, _build_cover),
+        ("C-002-identity-page", None, _build_identity_page),
+        ("C-003-executive-summary", None, _build_executive_summary),
+        ("C-009-environment", None, _build_environment),
+        ("C-008-timeline", None, _build_timeline),
+        ("C-004-finding", None, _build_finding),
+        ("C-007-decision", None, _build_decision),
+        ("C-005-recommendation", None, _build_recommendation),
+        ("C-006-risk", None, _build_risk),
+        ("C-010-evidence", None, _build_evidence),
+    )
+)
+
+
+def _builder_for(component_id: str, instance_id: str) -> Builder | None:
+    """Builder d'un bloc : entrée nommée d'abord, entrée générique ensuite.
+
+    Un bloc nommé sans builder propre ne retombe jamais sur le builder d'un
+    autre bloc nommé : seule l'entrée générique du composant peut le prendre en
+    charge, et à défaut il est diagnostiqué.
+    """
+    specific = _BUILDERS.get((component_id, instance_id))
+    if specific is not None:
+        return specific
+    return _BUILDERS.get((component_id, None))
 
 
 def compose_document(data: dict[str, Any], profile: Profile | None = None) -> Document:
@@ -352,7 +389,7 @@ def compose_document(data: dict[str, Any], profile: Profile | None = None) -> Do
     diagnostics: list[str] = list(diagnostics_list)
 
     for component_id, instance_id in blocks:
-        builder = _BUILDERS.get(component_id)
+        builder = _builder_for(component_id, instance_id)
         if builder is None:
             diagnostics.append(f"builder manquant: {component_id} :: {instance_id}")
             continue
