@@ -2,27 +2,29 @@
 
 Ce catalogue décrit les composants documentaires officiels du framework.
 
+> Les fichiers `components/*/metadata.yaml` constituent la source de vérité.
+> Ce catalogue est une projection documentaire de ces métadonnées.
+
 ## Index
 
 | ID | Composant | Version | Statut |
 |---|---|---:|---|
-| C-001 | Cover | 1.0 | 🟢 Stable |
+| C-001 | Cover | 1.0-draft | 🟡 Draft |
 | C-002 | Identity Page | 1.0 | 🟢 Stable |
-| C-003 | Executive Summary | 0.8 | 🟡 Draft |
-| C-004 | Finding | 1.0 | 🟢 Stable |
-| C-005 | Recommendation | 1.0 | 🟢 Stable |
-| C-006 | Risk | 0.7 | 🟡 Draft |
-| C-007 | Decision | 0.7 | 🟡 Draft |
-| C-008 | Timeline | 0.1 | 🔵 Prototype |
-| C-009 | Environment | 0.6 | 🟡 Draft |
-| C-010 | Evidence | 0.6 | 🟡 Draft |
-
+| C-003 | Executive Summary | 1.0-draft | 🟡 Draft |
+| C-004 | Finding | 1.0-draft | 🟡 Draft |
+| C-005 | Recommendation | 1.0-draft | 🟡 Draft |
+| C-006 | Risk | 1.0-draft | 🟡 Draft |
+| C-007 | Decision | 1.0-draft | 🟡 Draft |
+| C-008 | Timeline | 1.0-draft | 🟡 Draft |
+| C-009 | Environment | 1.0-draft | 🟡 Draft |
+| C-010 | Evidence | 1.0-draft | 🟡 Draft |
 ---
 
 ## C-001 — Cover
 
-- **Version :** 1.0
-- **Statut :** 🟢 Stable
+- **Version :** 1.0-draft
+- **Statut :** 🟡 Draft 
 - **Objectif :** identifier immédiatement le document, le client, le sujet, la version et le niveau de confidentialité.
 - **Quand l’utiliser :** pour tout livrable client formel.
 - **Quand ne pas l’utiliser :** pour une note interne courte ou un brouillon de travail.
@@ -39,7 +41,7 @@ Ce catalogue décrit les composants documentaires officiels du framework.
 
 ## C-003 — Executive Summary
 
-- **Version :** 0.8
+- **Version :** 1.0-draft
 - **Statut :** 🟡 Draft
 - **Objectif :** permettre à un décideur de comprendre le contexte, le résultat et les décisions requises sans lire tout le rapport.
 - **Structure :** contexte, objectif, résultat principal, impact, décision attendue.
@@ -47,23 +49,23 @@ Ce catalogue décrit les composants documentaires officiels du framework.
 
 ## C-004 — Finding
 
-- **Version :** 1.0
-- **Statut :** 🟢 Stable
+- **Version :** 1.0-draft
+- **Statut :** 🟡 Draft
 - **Objectif :** consigner un fait technique vérifiable.
 - **Structure :** identifiant, titre, observation, impact, preuve, conclusion.
 - **Règle :** un constat ne doit pas être formulé comme une recommandation.
 
 ## C-005 — Recommendation
 
-- **Version :** 1.0
-- **Statut :** 🟢 Stable
+- **Version :** 1.0-draft 
+- **Statut :** 🟡 Draft
 - **Objectif :** proposer une action reliée à un ou plusieurs constats.
 - **Structure :** identifiant, priorité, effort, action, bénéfice, échéance, responsable éventuel.
 - **Règle :** toute recommandation doit être actionnable et justifiée.
 
 ## C-006 — Risk
 
-- **Version :** 0.7
+- **Version :** 1.0-draft
 - **Statut :** 🟡 Draft
 - **Objectif :** formaliser une menace, sa probabilité, son impact et les mesures prévues.
 - **Structure :** description, probabilité, impact, niveau, traitement, statut.
@@ -71,22 +73,22 @@ Ce catalogue décrit les composants documentaires officiels du framework.
 
 ## C-007 — Decision
 
-- **Version :** 0.7
+- **Version :** 1.0-draft
 - **Statut :** 🟡 Draft
 - **Objectif :** tracer une décision, sa justification, son propriétaire et sa date.
 - **Structure :** décision, contexte, justification, décideur, échéance, conséquences.
 
 ## C-008 — Timeline
 
-- **Version :** 0.1
-- **Statut :** 🔵 Prototype
+- **Version :** 1.0-draft
+- **Statut :** 🟡 Draft
 - **Objectif :** présenter chronologiquement les événements d’une intervention ou d’un incident.
 - **Structure :** date/heure, événement, observation, référence éventuelle.
 - **À valider :** rendu sur plusieurs pages et comportement avec des événements longs.
 
 ## C-009 — Environment
 
-- **Version :** 0.6
+- **Version :** 1.0-draft
 - **Statut :** 🟡 Draft
 - **Objectif :** décrire de manière compacte l’environnement technique concerné.
 - **Structure :** catégorie, élément, valeur, commentaire.
@@ -94,7 +96,7 @@ Ce catalogue décrit les composants documentaires officiels du framework.
 
 ## C-010 — Evidence
 
-- **Version :** 0.6
+- **Version :** 1.0-draft
 - **Statut :** 🟡 Draft
 - **Objectif :** enregistrer une preuve exploitable et traçable.
 - **Structure :** identifiant, description, origine, date, référence, intégrité éventuelle.
