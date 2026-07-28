@@ -24,9 +24,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
+from adc_profile import Profile, load_profile, resolve
+
 from .model import ComponentInstance, Document
-from .profile import Profile, load_profile
-from .resolve import resolve
 
 _INCIDENT_PROFILE = (
     Path(__file__).resolve().parents[3] / "profiles" / "p-003-incident-report.yaml"
@@ -37,6 +37,7 @@ _INCIDENT_PROFILE = (
 def incident_profile() -> Profile:
     """Profil du rapport d'incident, chargé depuis le dépôt."""
     return load_profile(_INCIDENT_PROFILE)
+
 
 # Un builder reçoit (data_source, instance_id) et retourne le payload de rendu.
 Builder = Callable[[dict[str, Any], str], dict[str, Any]]

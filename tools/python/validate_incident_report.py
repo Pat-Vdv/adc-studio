@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
+"""Validation structurelle d'une source de rapport d'incident.
+
+Le résumé `--summary` n'a pas d'ordre propre : il affiche la résolution du
+profil, seule description de l'ordre des blocs. Ce script ne dépend que du
+noyau neutre `adc_profile`, jamais du moteur de composition.
+"""
 from __future__ import annotations
 import argparse, json, sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from adc_profile import load_profile, resolve  # noqa: E402
+
 SEVERITIES={"low","medium","high","critical"}
 PRIORITIES=SEVERITIES
+
+PROFILE_PATH = Path(__file__).resolve().parents[2] / "profiles" / "p-003-incident-report.yaml"
 
 @dataclass(frozen=True)
 class Issue:
@@ -47,18 +59,10 @@ def validate(data:Any)->list[Issue]:
             if ref not in recommendation_ids: issues.append(Issue(f"$.risks[{i}].mitigation_recommendation_ids[{j}]",f"unknown reference '{ref}'"))
     return issues
 
-def compose_block_index(data:dict[str,Any])->tuple[tuple[str,str],...]:
-    blocks=[("C-001-cover","cover"),("C-002-identity-page","identity"),("C-003-executive-summary","executive-summary"),("narrative","incident-context"),("C-009-environment","environment")]
-    if data.get("timeline"): blocks.append(("C-008-timeline","timeline"))
-    blocks += [("narrative-investigation",x["id"]) for x in data.get("investigations",[])]
-    blocks += [("C-004-finding",x["id"]) for x in data.get("findings",[])]
-    if data.get("probable_cause"): blocks.append(("narrative","probable-cause"))
-    blocks += [("C-007-decision",x["id"]) for x in data.get("actions_taken",[])]
-    blocks += [("C-005-recommendation",x["id"]) for x in data.get("recommendations",[])]
-    blocks += [("C-006-risk",x["id"]) for x in data.get("risks",[])]
-    blocks.append(("narrative","conclusion"))
-    blocks += [("C-010-evidence",x["id"]) for x in data.get("evidence",[])]
-    return tuple(blocks)
+def summary_blocks(data:dict[str,Any])->tuple[tuple[str,str],...]:
+    """Occurrences ordonnées telles que le profil les déclare."""
+    blocks,_=resolve(data,load_profile(PROFILE_PATH))
+    return blocks
 
 def main():
     p=argparse.ArgumentParser(); p.add_argument("input",type=Path); p.add_argument("--summary",action="store_true"); a=p.parse_args()
@@ -71,6 +75,6 @@ def main():
         return 1
     print("VALID: incident report source is structurally consistent.")
     if a.summary:
-        for n,(component,instance) in enumerate(compose_block_index(data),1): print(f"{n:02d}. {component} :: {instance}")
+        for n,(component,instance) in enumerate(summary_blocks(data),1): print(f"{n:02d}. {component} :: {instance}")
     return 0
 if __name__=="__main__": raise SystemExit(main())

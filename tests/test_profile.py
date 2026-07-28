@@ -13,8 +13,7 @@ import yaml
 
 from adc_engine import compose_document
 from adc_engine.compose import incident_profile
-from adc_engine.profile import load_profile
-from adc_engine.resolve import resolve
+from adc_profile import load_profile, resolve
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT / "profiles" / "p-003-incident-report.yaml"

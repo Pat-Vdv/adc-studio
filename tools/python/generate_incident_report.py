@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from adc_engine import compose_document  # noqa: E402
 from adc_engine.render_docx import render_docx  # noqa: E402
-from adc_engine.resolve import validate  # noqa: E402
+from adc_engine.validation import validate  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 

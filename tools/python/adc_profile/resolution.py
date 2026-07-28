@@ -11,18 +11,15 @@ Le partage des responsabilités est strict :
 
 Aucune occurrence n'est fabriquée pour satisfaire une cardinalité : un écart
 produit un diagnostic, jamais un bloc vide.
+
+Ce module ne connaît ni la composition, ni le rendu, ni la validation : c'est
+ce qui permet à plusieurs outils de partager la même description de l'ordre.
 """
 from __future__ import annotations
 
-import importlib.util
-import sys
-from pathlib import Path
 from typing import Any
 
-from .profile import Profile, ProfileEntry
-
-_VALIDATOR_PATH = Path(__file__).resolve().parents[1] / "validate_incident_report.py"
-_VALIDATOR_MODULE = "adc_incident_validator"
+from .contract import Profile, ProfileEntry
 
 # Bloc à occurrence unique -> clé source dont dépend sa présence.
 # `None` : le bloc est présent dès que le profil le déclare.
@@ -46,24 +43,6 @@ _MULTIPLE_OCCURRENCE_SOURCES: dict[str, str] = {
     "C-006-risk": "risks",
     "C-010-evidence": "evidence",
 }
-
-
-def _load_validator():
-    spec = importlib.util.spec_from_file_location(_VALIDATOR_MODULE, _VALIDATOR_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    # Enregistré avant exec_module : @dataclass résout cls.__module__ via sys.modules.
-    sys.modules[_VALIDATOR_MODULE] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-_validator = _load_validator()
-
-
-def validate(data: dict[str, Any]) -> list[Any]:
-    """Diagnostics structurels de la source (liste vide = valide)."""
-    return _validator.validate(data)
 
 
 def _occurrences(entry: ProfileEntry, data: dict[str, Any]) -> tuple[tuple[str, ...], str | None]:

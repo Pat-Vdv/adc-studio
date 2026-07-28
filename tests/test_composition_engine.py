@@ -10,7 +10,7 @@ from pathlib import Path
 
 from adc_engine import ComponentInstance, Document, compose_document
 from adc_engine.compose import incident_profile
-from adc_engine.resolve import resolve
+from adc_profile import resolve
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "reference_reports" / "incident_report" / "data" / "sql_server_2014_incident.json"
