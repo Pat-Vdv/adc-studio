@@ -121,6 +121,19 @@ lisible — sont enregistrés comme diagnostics et accompagnent le document.
 La génération n’en dépend pas : elle produit un fichier, et l’écart reste
 visible.
 
+Un document porte **deux séries de diagnostics**, qui ne répondent pas à la
+même question et ne sont donc pas fondues :
+
+| | Ce qu’ils disent | Origine |
+|---|---|---|
+| `diagnostics` | ce que la composition n’a pas su faire | le moteur |
+| `source_diagnostics` | ce que le contenu du rapport a de fautif | la validation métier |
+
+Un builder manquant et une référence inconnue produiraient sinon des écarts
+indistinguables, alors que le premier se corrige dans le moteur et le second
+dans la source. Les écarts aux contrats de composants, eux, n’apparaissent dans
+ni l’une ni l’autre : ils empêchent la composition d’avoir lieu (ADR-0009, I9).
+
 ### 1.5 Exemple conceptuel
 
 ```yaml

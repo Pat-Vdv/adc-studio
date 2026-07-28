@@ -39,7 +39,10 @@ La production d’un document suit une chaîne à sens unique, sans retour ni
 raccourci :
 
 ```
-Source (JSON validé)
+Source (JSON)
+      │
+      ▼
+Frontière d'entrée          contrats de composants ; au-delà, la forme est acquise
       │
       ▼
 Composition                 données métier -> instances de composants
@@ -59,16 +62,19 @@ antérieure à son entrée.
 
 ### Étapes
 
-1. **Source** — JSON validé structurellement. Elle est la seule entrée du
-   moteur, et n’est lue que par la composition.
-2. **Composition** — construit les instances de composants à partir de la
+1. **Source** — JSON. Elle est la seule entrée du moteur, et n’est lue que par
+   la frontière puis par la composition.
+2. **Frontière d’entrée** — confronte la source aux contrats de composants
+   (ADR-0010). Un écart interrompt ; en deçà, aucune étape ne revérifie la
+   forme.
+3. **Composition** — construit les instances de composants à partir de la
    résolution déterministe du profil. Un composant sans builder produit un
    diagnostic, jamais une exception.
-3. **Document IR** — porte l’ordre des instances, leurs payloads, les
+4. **Document IR** — porte l’ordre des instances, leurs payloads, les
    métadonnées et les diagnostics. Il ne connaît ni Word, ni PDF, ni HTML.
-4. **RenderContext** — index de présentation (libellés des cibles référencées),
+5. **RenderContext** — index de présentation (libellés des cibles référencées),
    dérivés des instances de l’IR et rangés sous `metadata["render_context"]`.
-5. **Renderer** — transforme l’IR enrichi du contexte en fichier. Il est maître
+6. **Renderer** — transforme l’IR enrichi du contexte en fichier. Il est maître
    de la mise en page et de rien d’autre.
 
 ## Invariants
@@ -117,6 +123,32 @@ Un composant sans builder, un composant sans renderer ou une référence non
 résolue n’interrompent pas la génération. La traçabilité est portée par
 `Document.diagnostics`.
 
+**I9 — La composition n’accepte qu’une source conforme aux contrats.**
+Un écart aux contrats de composants (ADR-0010) interrompt la chaîne : rien
+n’est composé, rien n’est rendu. Un défaut métier — référence inconnue,
+identifiant dupliqué, nœud de la famille absent — ne l’interrompt pas : il
+accompagne le document, dans `Document.source_diagnostics`.
+
+Cette vérification a lieu **une fois**, à la frontière. Aucun builder n’appelle
+un schéma : il resterait une transformation pure, mais ne pourrait plus être
+testé sans que son entrée soit d’abord rendue conforme.
+
+### Incomplet n’est pas malformé
+
+I8 et I9 ne se contredisent pas, parce qu’ils parlent de deux choses :
+
+| | Incomplet | Malformé |
+|---|---|---|
+| Ce qui manque | une information métier, une prise en charge du moteur | la forme d’entrée elle-même |
+| Exemple | référence sans cible, composant sans builder | `findings` qui n’est pas un tableau, `report` absent |
+| Composition | possible, avec diagnostics | refusée |
+
+Un document composé peut donc être incomplet sans être invalide (ADR-0008
+§ 1.4) : I8 traite de ce cas, et de lui seul. Ce que I9 refuse est autre chose
+— une entrée dont la forme n’est plus celle que les builders ont vocation à
+recevoir. Composer malgré tout leur demanderait de traiter un domaine que la
+campagne de durcissement leur a précisément retiré.
+
 ## Conséquences
 
 Deviennent interdits, sans révision de cet ADR :
@@ -125,15 +157,18 @@ Deviennent interdits, sans révision de cet ADR :
 - construire un index de libellés dans la couche de rendu ;
 - écrire un identifiant technique dans un document produit ;
 - trier, regrouper ou filtrer des instances pendant le rendu ;
-- stocker un libellé français dans un payload ou dans les métadonnées métier.
+- stocker un libellé français dans un payload ou dans les métadonnées métier ;
+- appeler un schéma de composant ailleurs qu'à la frontière d'entrée ;
+- fondre les diagnostics métier dans `Document.diagnostics` : on ne saurait
+  plus distinguer un trou du moteur d'un défaut du rapport.
 
 Restent ouverts et non contraints par cet ADR :
 
 - l’ajout de renderers (HTML, PDF) : ils consomment le même IR et le même
   contexte, et sont soumis aux mêmes invariants ;
 - les thèmes graphiques, internes à la couche de rendu ;
-- les blocs narratifs, aujourd’hui diagnostiqués, qui recevront un builder
-  dédié ;
+- les blocs narratifs, aujourd’hui sans contrat, déclarés fragments racine
+  (ADR-0010) : leur contenu ne peut donc pas fermer la frontière ;
 - la génération du JSON source, y compris par un modèle de langage : elle se
   situe strictement en amont de la chaîne, et n’en modifie aucun maillon.
 
@@ -155,7 +190,14 @@ Les invariants sont tenus par des tests, pas seulement par convention :
 - I7 — absence de titre de partie commun aux occurrences
   (`test_findings_are_rendered_independently`) ;
 - I8 — composant inconnu ignoré sans exception
-  (`test_unsupported_component_is_skipped_not_crashed`).
+  (`test_unsupported_component_is_skipped_not_crashed`) ;
+- I9 — écart de contrat bloquant et défaut métier non bloquant, prouvés dans
+  les deux sens (`test_a_contract_break_stops_the_composition`,
+  `test_a_business_defect_still_composes`), la séparation des deux natures de
+  diagnostic (`test_the_two_natures_of_diagnostic_stay_apart`), et l'absence
+  d'appel aux schémas hors de la frontière
+  (`test_the_contracts_are_consumed_at_the_boundary_only`,
+  `test_compose_document_stays_unguarded_below_the_boundary`).
 
 ## Notes
 
