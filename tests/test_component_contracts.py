@@ -606,6 +606,72 @@ def test_risk_example_covers_the_whole_contract():
     assert set(_valid_risk()) == set(schema["properties"])
 
 
+# --- C-007 Decision --------------------------------------------------------
+
+C_007 = "C-007-decision"
+
+
+def _decision_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_007), component=C_007
+    )
+
+
+def _valid_decision() -> dict:
+    return adc_contracts.load_json(adc_contracts.example_path(C_007))
+
+
+def test_decision_of_the_reference_report_is_valid():
+    for decision in _reference_source()["actions_taken"]:
+        assert _decision_errors(decision) == ()
+
+
+def test_decision_requires_only_its_identifier():
+    assert _decision_errors({"id": "decision-001"}) == ()
+    errors = _decision_errors({k: v for k, v in _valid_decision().items() if k != "id"})
+    assert len(errors) == 1
+    assert "'id'" in errors[0]
+
+
+def test_decision_rejects_an_empty_identifier():
+    errors = _decision_errors(dict(_valid_decision(), id=""))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_007}: $.id: ")
+
+
+@pytest.mark.parametrize("status", ["completed", "in_progress", "planifiée", "à confirmer"])
+def test_decision_status_is_deliberately_not_a_closed_vocabulary(status):
+    """Absence d'`enum` assumée, pas oubliée (ADR-0010).
+
+    Le validateur n'impose aucun vocabulaire pour ce champ. Que le rendu
+    sache présenter « completed » relève de la présentation.
+    """
+    assert _decision_errors(dict(_valid_decision(), status=status)) == ()
+
+
+def test_decision_rejects_an_empty_status():
+    errors = _decision_errors(dict(_valid_decision(), status=""))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_007}: $.status: ")
+
+
+def test_decision_rejects_an_unknown_field():
+    errors = _decision_errors(dict(_valid_decision(), responsable="A.D.C. srl"))
+    assert len(errors) == 1
+    assert "responsable" in errors[0]
+
+
+def test_decision_rejects_a_collection_instead_of_an_occurrence():
+    errors = _decision_errors([_valid_decision()])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_007}: $: ")
+
+
+def test_decision_example_covers_the_whole_contract():
+    schema = adc_contracts.load_schema(C_007)
+    assert set(_valid_decision()) == set(schema["properties"])
+
+
 def test_components_without_contract_are_exactly_the_declared_ones():
     """Suivi explicite des trous restants, plutôt qu'un silence.
 
