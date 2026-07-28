@@ -9,12 +9,15 @@ from adc_profile import Profile, load_profile
 
 from .model import ComponentInstance, Document
 from .compose import compose_document, incident_profile
+from .entry import SourceContractError, compose_from_source
 
 __all__ = [
     "ComponentInstance",
     "Document",
     "Profile",
+    "SourceContractError",
     "compose_document",
+    "compose_from_source",
     "incident_profile",
     "load_profile",
 ]

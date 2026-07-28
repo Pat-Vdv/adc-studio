@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from adc_diagnostics import ValidationDiagnostic
+
 
 @dataclass(frozen=True)
 class ComponentInstance:
@@ -26,7 +28,14 @@ class ComponentInstance:
 
 @dataclass(frozen=True)
 class Document:
-    """Résultat logique d'une composition, indépendant du format de sortie."""
+    """Résultat logique d'une composition, indépendant du format de sortie.
+
+    Deux natures de diagnostic, délibérément séparées : `diagnostics` dit ce que
+    la composition n'a pas su faire — builder manquant, référence non résolue —
+    tandis que `source_diagnostics` dit ce que le contenu a de fautif, sans que
+    la transformation en souffre. Les fondre empêcherait de distinguer un trou
+    du moteur d'un défaut du rapport.
+    """
 
     id: str
     type: str
@@ -34,3 +43,4 @@ class Document:
     metadata: dict[str, Any] = field(default_factory=dict)
     components: tuple[ComponentInstance, ...] = ()
     diagnostics: tuple[str, ...] = ()
+    source_diagnostics: tuple[ValidationDiagnostic, ...] = ()

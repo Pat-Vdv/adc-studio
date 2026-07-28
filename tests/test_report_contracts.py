@@ -247,13 +247,17 @@ def test_a_root_error_takes_the_prefix_without_trailing_separator():
     assert all(error.split(": ")[1] == "$.findings[3]" for error in errors)
 
 
-@pytest.mark.parametrize("component_id", sorted(FRAGMENTS))
-def test_no_contract_is_consumed_by_the_composition_chain(component_id):
-    """P1 est une bibliothèque : rien ne l'appelle encore (ADR-0009).
+def test_the_contracts_are_consumed_at_the_boundary_only():
+    """Un builder n'appelle jamais un schéma (ADR-0009, I9).
 
-    Brancher la validation dans un builder ferait de lui autre chose qu'une
-    transformation pure. La frontière d'entrée viendra, et sera ailleurs.
+    P1 n'autorisait aucun appel dans la chaîne ; P3 en autorise exactement un,
+    à la frontière d'entrée. Les builders restent des transformations pures,
+    testables sans avoir à rendre leur entrée conforme au préalable.
     """
     engine = adc_contracts.ROOT / "tools" / "python" / "adc_engine"
-    sources = [path.read_text(encoding="utf-8") for path in engine.glob("*.py")]
-    assert not any("adc_contracts" in source for source in sources)
+    consumers = {
+        path.name
+        for path in engine.glob("*.py")
+        if "adc_contracts" in path.read_text(encoding="utf-8")
+    }
+    assert consumers == {"entry.py"}
