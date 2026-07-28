@@ -1,0 +1,37 @@
+{
+  "report": {
+    "id": "ADC-MECA-2026-SQL2014-001",
+    "reference": "ADC-MECA-2026-SQL2014-001",
+    "title": "Investigation — Blocage SQL Server lors de DBCC CHECKDB",
+    "author": "A.D.C. srl",
+    "version": "0.1-draft",
+    "date": "2026-07-28",
+    "confidentiality": "Confidentiel",
+    "language": "fr-BE",
+    "revisions": [
+      {
+        "version": "0.1-draft",
+        "date": "2026-07-28",
+        "author": "A.D.C. srl",
+        "summary": "Rédaction initiale après intervention."
+      }
+    ],
+    "validations": [
+      {
+        "role": "Auteur",
+        "name": "A.D.C. srl",
+        "date": "2026-07-28"
+      }
+    ],
+    "distribution": [
+      {
+        "name": "Direction technique",
+        "organisation": "Soc01",
+        "role": "Destinataire"
+      }
+    ]
+  },
+  "client": {
+    "name": "Soc01"
+  }
+}

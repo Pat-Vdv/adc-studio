@@ -18,10 +18,10 @@ from jsonschema.exceptions import SchemaError
 
 import adc_contracts
 
-# Composants sans contrat déclaré, à ce stade du durcissement. La liste est
-# volontairement explicite : elle échoue aussi bien quand un composant perd son
-# contrat que lorsqu'un de ces trous est comblé sans mettre le suivi à jour.
-COMPONENTS_WITHOUT_CONTRACT = ("C-002-identity-page",)
+# Composants sans contrat déclaré. La liste est vide depuis le durcissement de
+# C-002 : elle reste explicite pour qu'un composant nouveau ou régressé fasse
+# échouer le suivi plutôt que de passer inaperçu.
+COMPONENTS_WITHOUT_CONTRACT: tuple[str, ...] = ()
 
 # Schéma de test : il porte les contraintes que les schémas du dépôt n'ont pas
 # encore, pour prouver que la validation rejette réellement.
@@ -868,6 +868,159 @@ def test_cover_example_covers_the_whole_contract():
     assert set(example) == set(schema["properties"])
     assert set(example["report"]) == set(schema["properties"]["report"]["properties"])
     assert set(example["client"]) == set(schema["properties"]["client"]["properties"])
+
+
+# --- C-002 Identity Page ---------------------------------------------------
+
+C_002 = "C-002-identity-page"
+_IDENTITY_TABLES = {
+    "revisions": ("version", "date", "author", "summary"),
+    "validations": ("role", "name", "date"),
+    "distribution": ("name", "organisation", "role"),
+}
+
+
+def _identity_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_002), component=C_002
+    )
+
+
+def _valid_identity() -> dict:
+    return adc_contracts.load_json(adc_contracts.example_path(C_002))
+
+
+def test_identity_page_of_the_reference_report_is_valid():
+    # Comme la couverture, ce builder reçoit la source entière et y prélève
+    # deux noeuds : c'est la racine qui est validée.
+    assert _identity_errors(_reference_source()) == ()
+
+
+@pytest.mark.parametrize("node", ["report", "client"])
+def test_identity_page_requires_the_two_nodes_the_validator_requires(node):
+    fragment = {k: v for k, v in _valid_identity().items() if k != node}
+    errors = _identity_errors(fragment)
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_002}: $: ")
+    assert f"'{node}'" in errors[0]
+
+
+def test_identity_page_requires_no_field_inside_those_nodes():
+    # Les trois collections sont facultatives : la source de référence n'en
+    # porte aucune et l'identité se compose sans elles.
+    assert _identity_errors({"report": {}, "client": {}}) == ()
+
+
+@pytest.mark.parametrize(
+    "fragment",
+    [
+        {"report": {"subtitle": "Analyse technique et recommandations"}, "client": {}},
+        {"report": {}, "client": {"vat_number": "BE0123456789"}},
+        {"report": {}, "client": {}, "environment": {"server_name": "SRV-01"}},
+    ],
+)
+def test_identity_page_does_not_close_a_shared_node(fragment):
+    """Ouverture assumée, pas un durcissement oublié (ADR-0010).
+
+    `report` et `client` sont lus par C-001 comme par C-002 : le sous-titre est
+    porté par la couverture, pas par cette page, et le rejeter ici ferait
+    trancher un composant sur le contrat d'un autre.
+    """
+    assert _identity_errors(fragment) == ()
+
+
+def test_identity_page_rejects_an_empty_report_identifier():
+    errors = _identity_errors({"report": {"id": ""}, "client": {}})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_002}: $.report.id: ")
+
+
+@pytest.mark.parametrize("language", ["fr-BE", "fr", "français", "nl-BE"])
+def test_identity_page_language_is_deliberately_not_a_closed_vocabulary(language):
+    """Absence d'`enum` assumée, pas oubliée (ADR-0010).
+
+    Aucune norme d'étiquetage n'est attestée : que la donnée de référence porte
+    « fr-BE » n'en impose ni la forme ni la liste.
+    """
+    assert _identity_errors({"report": {"language": language}, "client": {}}) == ()
+
+
+@pytest.mark.parametrize("table", sorted(_IDENTITY_TABLES))
+def test_identity_page_accepts_an_empty_table(table):
+    # Cardinalité et présence relèvent du profil, pas du schéma local.
+    assert _identity_errors({"report": {table: []}, "client": {}}) == ()
+
+
+@pytest.mark.parametrize("table", sorted(_IDENTITY_TABLES))
+def test_identity_page_accepts_a_partial_row(table):
+    field = _IDENTITY_TABLES[table][0]
+    assert _identity_errors({"report": {table: [{field: "x"}]}, "client": {}}) == ()
+
+
+@pytest.mark.parametrize("table", sorted(_IDENTITY_TABLES))
+def test_identity_page_closes_the_tables_it_owns(table):
+    """Fermeture assumée : ces collections ne sont lues que par ce composant.
+
+    Le partage se constate noeud par noeud et ne s'hérite pas (ADR-0010) :
+    `report` reste ouvert, ses trois tableaux non.
+    """
+    errors = _identity_errors({"report": {table: [{"commentaire": "Hors contrat."}]}, "client": {}})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_002}: $.report.{table}[0]: ")
+    assert "commentaire" in errors[0]
+
+
+@pytest.mark.parametrize("table", sorted(_IDENTITY_TABLES))
+def test_identity_page_rejects_a_non_object_row(table):
+    # Le builder ignore silencieusement une entrée non conforme : tolérance
+    # d'implémentation, hors contrat (ADR-0010).
+    errors = _identity_errors({"report": {table: ["0.1-draft"]}, "client": {}})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_002}: $.report.{table}[0]: ")
+
+
+@pytest.mark.parametrize("table", sorted(_IDENTITY_TABLES))
+def test_identity_page_rejects_a_non_array_table(table):
+    errors = _identity_errors({"report": {table: {}}, "client": {}})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_002}: $.report.{table}: ")
+
+
+def test_identity_page_says_nothing_about_its_heading():
+    # L'intitulé de la page figure au payload mais pas au contrat : le builder
+    # le pose, il ne le lit pas dans la source.
+    assert "heading" not in adc_contracts.load_schema(C_002)["properties"]["report"]["properties"]
+
+
+def test_identity_page_and_cover_describe_shared_fields_identically():
+    """Un champ décrit par deux composants doit l'être de la même manière.
+
+    Sans ce test, les sept champs que la couverture et l'identité lisent tous
+    deux dériveraient au fil des durcissements, et la source n'aurait plus de
+    forme canonique unique (ADR-0010).
+    """
+    cover = adc_contracts.load_schema(C_001)["properties"]
+    identity = adc_contracts.load_schema(C_002)["properties"]
+    for node in ("report", "client"):
+        shared = set(cover[node]["properties"]) & set(identity[node]["properties"])
+        assert shared, f"aucun champ partagé sur `{node}` : hypothèse du test caduque"
+        for field in shared:
+            expected = {k: v for k, v in cover[node]["properties"][field].items() if k != "description"}
+            actual = {k: v for k, v in identity[node]["properties"][field].items() if k != "description"}
+            assert actual == expected, f"contrats divergents sur `{node}.{field}`"
+
+
+def test_identity_page_example_covers_the_whole_contract():
+    example = _valid_identity()
+    schema = adc_contracts.load_schema(C_002)
+    assert set(example) == set(schema["properties"])
+    report_fields = schema["properties"]["report"]["properties"]
+    assert set(example["report"]) == set(report_fields)
+    assert set(example["client"]) == set(schema["properties"]["client"]["properties"])
+    for table, fields in _IDENTITY_TABLES.items():
+        assert set(report_fields[table]["items"]["properties"]) == set(fields)
+        assert example["report"][table], f"tableau `{table}` vide : il ne démontrerait rien"
+        assert all(set(row) == set(fields) for row in example["report"][table])
 
 
 def test_components_without_contract_are_exactly_the_declared_ones():

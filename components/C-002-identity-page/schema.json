@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-002 Identity Page — fragment source",
+  "description": "Fragment consommé par le builder de l'identité documentaire : les noeuds `report` et `client` de la racine. Ces noeuds sont partagés avec C-001 Cover, qui en lit une partie : ni la racine ni les deux noeuds ne sont fermés (ADR-0010). Les trois collections `revisions`, `validations` et `distribution` ne sont lues que par ce composant : il les possède en propre, elles sont donc fermées. L'intitulé de la page n'entre pas au contrat : le builder le pose, il ne le lit pas dans la source.",
+  "type": "object",
+  "required": [
+    "report",
+    "client"
+  ],
+  "properties": {
+    "report": {
+      "type": "object",
+      "description": "Métadonnées éditoriales du rapport. Noeud requis : le validateur l'exige déjà à la racine de la source. Les sept premiers champs sont aussi portés par la couverture (C-001) et y sont décrits à l'identique.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifiant du rapport, celui que porte le Document composé. Non requis — la composition aboutit sans lui — mais un identifiant vide n'a aucune sémantique."
+        },
+        "reference": {
+          "type": "string",
+          "description": "Référence du document, telle qu'elle doit être imprimée."
+        },
+        "title": {
+          "type": "string",
+          "description": "Titre du rapport."
+        },
+        "author": {
+          "type": "string",
+          "description": "Auteur du rapport, personne ou entité."
+        },
+        "version": {
+          "type": "string",
+          "description": "Version du document. Chaîne : « 0.1-draft » est une écriture attestée, aucun format n'est imposé."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date du rapport. Aucun format n'est attesté : la valeur est reprise telle quelle par le rendu."
+        },
+        "confidentiality": {
+          "type": "string",
+          "description": "Mention de confidentialité. Volontairement non contrainte par un `enum` : aucun vocabulaire n'est fermé pour ce champ, ni par le validateur ni par une règle documentée."
+        },
+        "language": {
+          "type": "string",
+          "description": "Langue du document. Aucun vocabulaire n'est fermé : que la donnée de référence porte « fr-BE » n'impose ni cette étiquette ni sa norme."
+        },
+        "revisions": {
+          "type": "array",
+          "description": "Historique des versions. Collection facultative : absente, aucun tableau n'est rendu. Elle n'est lue que par ce composant, qui la ferme.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "version": {
+                "type": "string",
+                "description": "Version décrite par la révision."
+              },
+              "date": {
+                "type": "string",
+                "description": "Date de la révision."
+              },
+              "author": {
+                "type": "string",
+                "description": "Auteur de la révision."
+              },
+              "summary": {
+                "type": "string",
+                "description": "Objet de la révision."
+              }
+            }
+          }
+        },
+        "validations": {
+          "type": "array",
+          "description": "Validations du document. Collection facultative : absente, aucun tableau n'est rendu.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "type": "string",
+                "description": "Rôle du validateur."
+              },
+              "name": {
+                "type": "string",
+                "description": "Nom du validateur."
+              },
+              "date": {
+                "type": "string",
+                "description": "Date de la validation."
+              }
+            }
+          }
+        },
+        "distribution": {
+          "type": "array",
+          "description": "Diffusion du document. Collection facultative : absente, aucun tableau n'est rendu.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Nom du destinataire."
+              },
+              "organisation": {
+                "type": "string",
+                "description": "Organisation du destinataire."
+              },
+              "role": {
+                "type": "string",
+                "description": "Rôle du destinataire vis-à-vis du document."
+              }
+            }
+          }
+        }
+      }
+    },
+    "client": {
+      "type": "object",
+      "description": "Destinataire du rapport. Noeud requis : le validateur l'exige déjà à la racine de la source. Seul son nom est repris par l'identité documentaire.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nom du client, tel qu'il apparaît sur la couverture."
+        }
+      }
+    }
+  }
+}
