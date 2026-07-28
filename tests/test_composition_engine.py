@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 from adc_engine import ComponentInstance, Document, compose_document
+from adc_engine.compose import incident_profile
 from adc_engine.resolve import resolve
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -539,7 +540,8 @@ def test_unsupported_components_are_reported_not_crashed():
 
 def test_composition_matches_resolution_order():
     data = _data()
-    resolved = [cid for cid, _ in resolve(data)]
+    blocks, _ = resolve(data, incident_profile())
+    resolved = [cid for cid, _ in blocks]
     doc = compose_document(data)
     supported = [c.component_id for c in doc.components]
     # Les composants instanciés apparaissent dans le même ordre relatif que la

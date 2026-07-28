@@ -1,9 +1,10 @@
 """Composition : données validées -> Document Model (IR).
 
-Le moteur parcourt la résolution déterministe des composants et délègue, pour
-chaque composant, la construction du payload à un *builder* dédié. Ajouter la
-prise en charge d'un composant = ajouter un builder dans `_BUILDERS`. Un
-composant résolu mais sans builder ne casse rien : il produit un diagnostic.
+L'ordre et les cardinalités viennent du **profil** ; le moteur parcourt les
+occurrences résolues et délègue, pour chacune, la construction du payload à un
+*builder* dédié. Ajouter la prise en charge d'un composant = ajouter un builder
+dans `_BUILDERS`. Un composant résolu mais sans builder ne casse rien : il
+produit un diagnostic.
 
 Développement incrémental (cas SQL Server Incident) — composants pris en charge :
   - C-001-cover
@@ -19,10 +20,23 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
 """
 from __future__ import annotations
 
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Callable
 
 from .model import ComponentInstance, Document
+from .profile import Profile, load_profile
 from .resolve import resolve
+
+_INCIDENT_PROFILE = (
+    Path(__file__).resolve().parents[3] / "profiles" / "p-003-incident-report.yaml"
+)
+
+
+@lru_cache(maxsize=None)
+def incident_profile() -> Profile:
+    """Profil du rapport d'incident, chargé depuis le dépôt."""
+    return load_profile(_INCIDENT_PROFILE)
 
 # Un builder reçoit (data_source, instance_id) et retourne le payload de rendu.
 Builder = Callable[[dict[str, Any], str], dict[str, Any]]
@@ -322,15 +336,21 @@ _BUILDERS: dict[str, Builder] = {
 }
 
 
-def compose_document(data: dict[str, Any]) -> Document:
-    """Construit le Document (IR) à partir de la source validée."""
+def compose_document(data: dict[str, Any], profile: Profile | None = None) -> Document:
+    """Construit le Document (IR) à partir de la source validée et d'un profil.
+
+    Sans profil explicite, celui du rapport d'incident est utilisé. L'ordre des
+    instances est celui que le profil déclare : le moteur ne le connaît pas.
+    """
     report = data.get("report", {})
     client = data.get("client", {})
 
-    instances: list[ComponentInstance] = []
-    diagnostics: list[str] = []
+    blocks, diagnostics_list = resolve(data, profile or incident_profile())
 
-    for component_id, instance_id in resolve(data):
+    instances: list[ComponentInstance] = []
+    diagnostics: list[str] = list(diagnostics_list)
+
+    for component_id, instance_id in blocks:
         builder = _BUILDERS.get(component_id)
         if builder is None:
             diagnostics.append(f"builder manquant: {component_id} :: {instance_id}")
