@@ -82,17 +82,27 @@ def test_identity_page_renders_optional_tables(tmp_path):
     assert rows[1] == ["0.1-draft", "2026-07-28", "A.D.C. srl", "Création"]
 
 
-def test_executive_summary_texts_present(tmp_path):
+def test_executive_summary_renders_payload_faithfully(tmp_path):
+    # Le rendu est comparé au payload composé, pas au texte de la source : la
+    # rédaction du rapport de référence n'a aucune incidence sur ce test.
     data = _data()
     data["executive_summary"]["context"] = "Contexte du blocage.\n\nSeconde partie du contexte."
     document = compose_document(data)
+    summary = document.components[2]
     out = render_docx(document, tmp_path / "report.docx")
     paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
-    assert "Résumé exécutif" in paragraphs
-    assert "Contexte" in paragraphs
-    assert "Impact métier" in paragraphs
-    assert "Contexte du blocage." in paragraphs
-    assert "Seconde partie du contexte." in paragraphs
+
+    assert summary.payload["heading"] in paragraphs
+    for key, heading in (
+        ("context", "Contexte"),
+        ("business_impact", "Impact métier"),
+        ("conclusion", "Conclusion"),
+        ("recommended_action", "Action recommandée"),
+    ):
+        blocks = summary.payload[key]
+        assert (heading in paragraphs) is bool(blocks)  # titre ssi volet renseigné
+        for block in blocks:
+            assert block in paragraphs
 
 
 def test_executive_summary_omits_empty_sections(tmp_path):

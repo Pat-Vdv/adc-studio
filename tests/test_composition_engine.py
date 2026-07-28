@@ -14,6 +14,9 @@ from adc_engine.resolve import resolve
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "reference_reports" / "incident_report" / "data" / "sql_server_2014_incident.json"
 
+# Volets du résumé exécutif, dans l'ordre attendu du composant C-003.
+SUMMARY_SECTIONS = ("context", "business_impact", "conclusion", "recommended_action")
+
 
 def _data() -> dict:
     return json.loads(DATA.read_text(encoding="utf-8-sig"))
@@ -80,9 +83,22 @@ def test_executive_summary_follows_identity_page():
     assert summary.component_id == "C-003-executive-summary"
     assert summary.instance_id == "executive-summary"
     assert summary.payload["heading"] == "Résumé exécutif"
-    # La source de référence porte encore des marqueurs de rédaction.
-    assert summary.payload["context"] == ("TODO — résumer l’incident.",)
-    assert summary.payload["recommended_action"] == ("TODO — résumer l’action prioritaire.",)
+
+
+def test_executive_summary_reads_every_section_from_source():
+    # Volontairement indépendant du texte de la source : la rédaction du rapport
+    # de référence est une évolution normale de la donnée, pas une régression.
+    data = _data()
+    source = data["executive_summary"]
+    summary = compose_document(data).components[2]
+    for key in SUMMARY_SECTIONS:
+        blocks = summary.payload[key]
+        assert blocks, f"volet '{key}' non lu depuis la source"
+        assert all(isinstance(b, str) and b and b == b.strip() for b in blocks)
+        # Aucun texte inventé : chaque paragraphe provient bien de la source.
+        raw = source[key]
+        haystack = "\n".join(raw) if isinstance(raw, list) else str(raw)
+        assert all(b in haystack for b in blocks)
 
 
 def test_executive_summary_splits_paragraphs():
