@@ -11,6 +11,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-003-executive-summary
   - C-009-environment
   - C-008-timeline
+  - C-004-finding
 """
 from __future__ import annotations
 
@@ -149,12 +150,50 @@ def _build_timeline(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
+def _build_finding(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Constat : l'occurrence dont l'identifiant est `instance_id`.
+
+    Le payload ne porte que les `evidence_ids` : les identifiants restent les
+    clés de liaison internes du modèle, leur libellé lisible relève du rendu.
+    """
+    findings = data.get("findings", [])
+    source = next(
+        (f for f in findings if isinstance(f, dict) and f.get("id") == instance_id),
+        {},
+    )
+    evidence_ids = source.get("evidence_ids")
+    return {
+        "id": source.get("id"),
+        "title": source.get("title"),
+        "severity": source.get("severity"),
+        "observation": _paragraphs(source.get("observation")),
+        "impact": _paragraphs(source.get("impact")),
+        "analysis": _paragraphs(source.get("analysis")),
+        "evidence_ids": tuple(evidence_ids) if isinstance(evidence_ids, list) else (),
+    }
+
+
+def _evidence_titles(data: dict[str, Any]) -> dict[str, str]:
+    """Index identifiant -> titre des preuves, pour la présentation.
+
+    Contexte de rendu au sens d'ADR-0008 : le modèle relie par identifiant, la
+    présentation a besoin du libellé correspondant sans que les composants
+    porteurs de références aient à dupliquer le texte.
+    """
+    index: dict[str, str] = {}
+    for item in data.get("evidence", []):
+        if isinstance(item, dict) and item.get("id") and item.get("title"):
+            index[item["id"]] = item["title"]
+    return index
+
+
 _BUILDERS: dict[str, Builder] = {
     "C-001-cover": _build_cover,
     "C-002-identity-page": _build_identity_page,
     "C-003-executive-summary": _build_executive_summary,
     "C-009-environment": _build_environment,
     "C-008-timeline": _build_timeline,
+    "C-004-finding": _build_finding,
 }
 
 
@@ -185,6 +224,8 @@ def compose_document(data: dict[str, Any]) -> Document:
             "date": report.get("date"),
             "confidentiality": report.get("confidentiality"),
             "language": report.get("language"),
+            # Contexte de rendu : libellés des cibles référencées par identifiant.
+            "evidence_titles": _evidence_titles(data),
         },
         components=tuple(instances),
         diagnostics=tuple(diagnostics),

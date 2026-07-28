@@ -8,6 +8,7 @@ substitution). Développement incrémental — composants rendus :
   - C-003-executive-summary
   - C-009-environment
   - C-008-timeline
+  - C-004-finding
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -24,8 +25,10 @@ from docx.shared import Pt
 
 from .model import ComponentInstance, Document
 
-# Un renderer reçoit (docx, instance) et écrit dans le document Word en place.
-Renderer = Callable[[Any, ComponentInstance], None]
+# Un renderer reçoit (docx, instance, contexte) et écrit dans le document Word
+# en place. Le contexte porte les informations de présentation communes au
+# document (ADR-0008), par exemple les libellés des cibles référencées.
+Renderer = Callable[[Any, ComponentInstance, dict[str, Any]], None]
 
 
 def _add_label_value(docx: Any, label: str, value: Any) -> None:
@@ -38,7 +41,7 @@ def _add_label_value(docx: Any, label: str, value: Any) -> None:
     paragraph.add_run(str(value))
 
 
-def _render_cover(docx: Any, instance: ComponentInstance) -> None:
+def _render_cover(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
     payload = instance.payload
 
     document_type = payload.get("document_type")
@@ -113,7 +116,7 @@ def _add_table(docx: Any, columns: tuple[tuple[str, str], ...], rows: Any) -> No
             cell.text = "" if value in (None, "") else str(value)
 
 
-def _render_identity_page(docx: Any, instance: ComponentInstance) -> None:
+def _render_identity_page(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
     payload = instance.payload
 
     # Composant pleine page : il démarre après la page de garde.
@@ -140,7 +143,7 @@ _SUMMARY_SECTIONS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _render_executive_summary(docx: Any, instance: ComponentInstance) -> None:
+def _render_executive_summary(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
     payload = instance.payload
 
     # Le résumé exécutif ouvre le corps du rapport : il démarre sur sa page.
@@ -175,7 +178,7 @@ _STORAGE_COLUMNS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _render_environment(docx: Any, instance: ComponentInstance) -> None:
+def _render_environment(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
     payload = instance.payload
 
     # Section courante du corps : pas de saut de page, elle suit le narratif.
@@ -198,7 +201,7 @@ _TIMELINE_COLUMNS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _render_timeline(docx: Any, instance: ComponentInstance) -> None:
+def _render_timeline(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
     entries = instance.payload.get("entries") or ()
     if not entries:
         return  # chronologie vide : pas de titre, pas de tableau
@@ -208,12 +211,55 @@ def _render_timeline(docx: Any, instance: ComponentInstance) -> None:
     _add_table(docx, _TIMELINE_COLUMNS, entries)
 
 
+_FINDING_SECTIONS: tuple[tuple[str, str], ...] = (
+    ("observation", "Observation"),
+    ("impact", "Impact"),
+    ("analysis", "Analyse"),
+)
+
+
+def _evidence_labels(evidence_ids: Any, context: dict[str, Any]) -> tuple[str, ...]:
+    """Libellés lisibles des preuves référencées.
+
+    Les identifiants sont des clés de liaison internes : ils ne sont jamais
+    écrits dans le document. Une référence dont le libellé est introuvable est
+    donc omise — l'intégrité référentielle est garantie en amont par la
+    validation de la source.
+    """
+    titles = context.get("evidence_titles") or {}
+    return tuple(titles[ref] for ref in evidence_ids or () if ref in titles)
+
+
+def _render_finding(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
+    payload = instance.payload
+
+    # Chaque constat est une section autonome : le renderer reste sans état et
+    # n'émet aucun titre de partie commun aux occurrences.
+    title = payload.get("title")
+    docx.add_heading(f"Constat — {title}" if title else "Constat", level=1)
+
+    _add_label_value(docx, "Gravité", payload.get("severity"))
+
+    for key, heading in _FINDING_SECTIONS:
+        blocks = payload.get(key) or ()
+        if not blocks:
+            continue  # volet non renseigné : pas de titre orphelin
+        docx.add_heading(heading, level=2)
+        for block in blocks:
+            docx.add_paragraph(str(block))
+
+    labels = _evidence_labels(payload.get("evidence_ids"), context)
+    if labels:
+        _add_label_value(docx, "Preuves", " ; ".join(labels))
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
     "C-002-identity-page": _render_identity_page,
     "C-003-executive-summary": _render_executive_summary,
     "C-009-environment": _render_environment,
     "C-008-timeline": _render_timeline,
+    "C-004-finding": _render_finding,
 }
 
 
@@ -226,12 +272,16 @@ def render_docx(document: Document, output_path: str | Path) -> Path:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Contexte de présentation, commun à toutes les instances : il vient de
+    # l'IR, jamais de la source. Le renderer ne connaît pas le JSON d'entrée.
+    context = dict(document.metadata)
+
     docx = DocxDocument()
     for instance in document.components:
         renderer = _RENDERERS.get(instance.component_id)
         if renderer is None:
             continue  # non rendu à ce stade — voir Document.diagnostics
-        renderer(docx, instance)
+        renderer(docx, instance, context)
 
     docx.save(str(output_path))
     return output_path

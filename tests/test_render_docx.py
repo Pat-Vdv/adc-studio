@@ -198,6 +198,60 @@ def test_timeline_absent_renders_no_section(tmp_path):
     assert "Environnement" in _texts(out)  # le reste du rapport est intact
 
 
+def test_finding_is_rendered_as_its_own_section(tmp_path):
+    data = _data()
+    data["findings"][0]["observation"] = "Symptôme attesté.\n\nSecond paragraphe."
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Constat — Blocage observé pendant DBCC CHECKDB" in paragraphs
+    assert "Observation" in paragraphs
+    assert "Symptôme attesté." in paragraphs
+    assert "Second paragraphe." in paragraphs
+    assert "Analyse" in paragraphs
+
+
+def test_finding_renders_evidence_titles_never_ids(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    assert "Preuves : État et configuration de l’environnement SQL" in text
+    assert "evidence-001" not in text  # identifiant technique jamais affiché
+    assert "finding-001" not in text
+
+
+def test_finding_omits_evidence_line_without_references(tmp_path):
+    data = _data()
+    data["findings"][0]["evidence_ids"] = []
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    assert "Constat — Blocage observé pendant DBCC CHECKDB" in text
+    assert "Preuves" not in text
+
+
+def test_findings_are_rendered_independently(tmp_path):
+    data = _data()
+    data["findings"].append(
+        {
+            "id": "finding-002",
+            "title": "Second constat",
+            "severity": "low",
+            "observation": "Observation du second constat.",
+            "impact": "Impact mineur.",
+            "analysis": "Analyse du second constat.",
+            "evidence_ids": ["evidence-001"],
+        }
+    )
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    # Deux sections autonomes, aucun titre de partie « Constats » commun.
+    assert "Constat — Blocage observé pendant DBCC CHECKDB" in paragraphs
+    assert "Constat — Second constat" in paragraphs
+    assert "Constats" not in paragraphs
+
+
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):
     document = compose_document(_data())
     # Injecte une instance sans renderer : le rendu ne doit ni planter ni la rendre.

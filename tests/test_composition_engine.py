@@ -197,6 +197,57 @@ def test_timeline_absent_produces_no_instance():
     assert not any("C-008-timeline" in d for d in doc.diagnostics)
 
 
+def _findings(doc) -> list[ComponentInstance]:
+    return [c for c in doc.components if c.component_id == "C-004-finding"]
+
+
+def test_finding_instance_matches_its_source_entry():
+    data = _data()
+    data["findings"].append(
+        {
+            "id": "finding-002",
+            "title": "Second constat",
+            "severity": "low",
+            "observation": "Observation du second constat.",
+            "impact": "Impact mineur.",
+            "analysis": "Analyse du second constat.",
+            "evidence_ids": [],
+        }
+    )
+    findings = _findings(compose_document(data))
+    # Une instance par constat, chacune alimentée par sa propre entrée source.
+    assert [f.instance_id for f in findings] == ["finding-001", "finding-002"]
+    second = findings[1].payload
+    assert second["id"] == "finding-002"
+    assert second["title"] == "Second constat"
+    assert second["severity"] == "low"
+    assert second["observation"] == ("Observation du second constat.",)
+
+
+def test_finding_narrative_fields_are_paragraphs():
+    data = _data()
+    data["findings"][0]["observation"] = "Premier paragraphe.\n\nSecond paragraphe."
+    payload = _findings(compose_document(data))[0].payload
+    assert payload["observation"] == ("Premier paragraphe.", "Second paragraphe.")
+    assert all(isinstance(b, str) for b in payload["analysis"])
+
+
+def test_finding_payload_keeps_evidence_ids_only():
+    # Le modèle relie par identifiant : aucun libellé de preuve n'est dupliqué
+    # dans le payload du constat.
+    payload = _findings(compose_document(_data()))[0].payload
+    assert payload["evidence_ids"] == ("evidence-001",)
+    assert "evidence_titles" not in payload
+    assert not any("État et configuration" in str(v) for v in payload.values())
+
+
+def test_evidence_titles_are_exposed_as_render_context():
+    doc = compose_document(_data())
+    assert doc.metadata["evidence_titles"] == {
+        "evidence-001": "État et configuration de l’environnement SQL"
+    }
+
+
 def test_narrative_incident_context_stays_diagnosed():
     # Le bloc narratif n'est pas un composant du catalogue : il reste un
     # diagnostic tant qu'aucun builder dédié n'est livré.
@@ -205,17 +256,18 @@ def test_narrative_incident_context_stays_diagnosed():
 
 
 def test_unsupported_components_are_reported_not_crashed():
-    # À ce stade, C-001 à C-003, C-009 et C-008 ont un builder : les autres
+    # À ce stade, C-001 à C-004, C-008 et C-009 ont un builder : les autres
     # composants résolus doivent produire un diagnostic, jamais une exception.
     doc = compose_document(_data())
-    assert any("C-004-finding" in d for d in doc.diagnostics)
-    assert not any("C-008-timeline" in d for d in doc.diagnostics)
+    assert any("C-005-recommendation" in d for d in doc.diagnostics)
+    assert not any("C-004-finding" in d for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
         "C-003-executive-summary",
         "C-009-environment",
         "C-008-timeline",
+        "C-004-finding",
     ]
 
 
