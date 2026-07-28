@@ -1,5 +1,51 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-004 Finding — fragment source",
+  "description": "Forme d'une occurrence de la collection `findings`. Le composant est répétable : la collection, l'unicité des identifiants et la résolubilité des références relèvent du noeud parent et du validateur.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "severity",
+    "observation",
+    "impact",
+    "analysis",
+    "evidence_ids"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant du constat, stable dans le document."
+    },
+    "title": {
+      "type": "string",
+      "description": "Intitulé du constat."
+    },
+    "severity": {
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Gravité, dans le vocabulaire canonique du domaine. Son libellé de lecture relève du rendu."
+    },
+    "observation": {
+      "type": "string",
+      "description": "Symptômes attestés, sans interprétation."
+    },
+    "impact": {
+      "type": "string",
+      "description": "Conséquences constatées."
+    },
+    "analysis": {
+      "type": "string",
+      "description": "Analyse technique, sans présenter une hypothèse comme un fait."
+    },
+    "evidence_ids": {
+      "type": "array",
+      "description": "Preuves à l'appui, désignées par identifiant. Leur existence est vérifiée par le validateur, pas ici.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
 }

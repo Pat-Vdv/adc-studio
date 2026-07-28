@@ -347,6 +347,91 @@ def test_timeline_example_covers_the_whole_contract():
     assert all(set(entry) == set(entry_fields) for entry in example)
 
 
+# --- C-004 Finding ---------------------------------------------------------
+
+C_004 = "C-004-finding"
+_FINDING_REQUIRED = ("id", "title", "severity", "observation", "impact", "analysis", "evidence_ids")
+
+
+def _finding_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_004), component=C_004
+    )
+
+
+def _valid_finding() -> dict:
+    return adc_contracts.load_json(adc_contracts.example_path(C_004))
+
+
+def test_finding_of_the_reference_report_is_valid():
+    # Le schéma décrit une occurrence : c'est bien une entrée qui est validée.
+    for finding in _reference_source()["findings"]:
+        assert _finding_errors(finding) == ()
+
+
+@pytest.mark.parametrize("field", _FINDING_REQUIRED)
+def test_finding_requires_every_field_the_validator_requires(field):
+    # `required` est ici attesté : le validateur exige déjà ces sept champs.
+    fragment = {k: v for k, v in _valid_finding().items() if k != field}
+    errors = _finding_errors(fragment)
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_004}: $: ")
+    assert f"'{field}'" in errors[0]
+
+
+@pytest.mark.parametrize("severity", ["low", "medium", "high", "critical"])
+def test_finding_accepts_the_canonical_vocabulary(severity):
+    assert _finding_errors(dict(_valid_finding(), severity=severity)) == ()
+
+
+@pytest.mark.parametrize("severity", ["urgent", "High", "élevée", 3, None])
+def test_finding_rejects_a_severity_outside_the_vocabulary(severity):
+    # Vocabulaire fermé attesté par le validateur, y compris sa casse.
+    errors = _finding_errors(dict(_valid_finding(), severity=severity))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_004}: $.severity: ")
+
+
+def test_finding_accepts_an_empty_reference_list():
+    assert _finding_errors(dict(_valid_finding(), evidence_ids=[])) == ()
+
+
+def test_finding_rejects_a_non_textual_reference():
+    errors = _finding_errors(dict(_valid_finding(), evidence_ids=["evidence-001", 42]))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_004}: $.evidence_ids[1]: ")
+
+
+def test_finding_rejects_an_empty_reference():
+    errors = _finding_errors(dict(_valid_finding(), evidence_ids=[""]))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_004}: $.evidence_ids[0]: ")
+
+
+def test_finding_says_nothing_about_reference_resolvability():
+    # Cible inexistante et doublon : formes valides ici, écarts pour le
+    # validateur global. Le schéma ne connaît qu'une entrée à la fois.
+    fragment = dict(_valid_finding(), evidence_ids=["evidence-404", "evidence-404"])
+    assert _finding_errors(fragment) == ()
+
+
+def test_finding_rejects_an_unknown_field():
+    errors = _finding_errors(dict(_valid_finding(), recommandation="Hors contrat."))
+    assert len(errors) == 1
+    assert "recommandation" in errors[0]
+
+
+def test_finding_rejects_a_collection_instead_of_an_occurrence():
+    errors = _finding_errors([_valid_finding()])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_004}: $: ")
+
+
+def test_finding_example_covers_the_whole_contract():
+    schema = adc_contracts.load_schema(C_004)
+    assert set(_valid_finding()) == set(schema["properties"])
+
+
 def test_components_without_contract_are_exactly_the_declared_ones():
     """Suivi explicite des trous restants, plutôt qu'un silence.
 
