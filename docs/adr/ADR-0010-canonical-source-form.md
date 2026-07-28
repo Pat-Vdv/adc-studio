@@ -57,10 +57,40 @@ composant à l'autre :
 | C-009 Environment | le noeud `environment` | objet |
 | C-008 Timeline | la collection `timeline` entière | tableau |
 | C-004 Finding | **une** occurrence de `findings` | objet |
+| C-001 Cover | les noeuds `report` et `client` de la racine | objet racine, non fermé |
 
 Un composant répétable décrit donc **une occurrence**. La collection qui les
 porte — sa présence, sa cardinalité, l'unicité de ses identifiants — relève du
 noeud parent et du profil, jamais du schéma du composant.
+
+### Noeud source partagé entre plusieurs composants
+
+Les premiers composants durcis possédaient chacun leur noeud. Fermer l'objet
+(`additionalProperties: false`) y disait quelque chose de vrai : ce composant
+connaît tout ce que ce noeud porte, un champ non décrit est hors contrat.
+
+La couverture rompt cette correspondance. Son builder ne reçoit pas un noeud
+mais deux, `report` et `client`, dont il ne lit qu'une partie des champs — et
+que l'identité documentaire lit également, comme la composition en tire par
+ailleurs les métadonnées du document.
+
+Un noeud partagé ne peut pas être fermé par le schéma d'un seul de ses
+lecteurs : C-001 rejetterait `report.language` ou `report.revisions`, champs
+qu'il ne consomme pas mais que C-002 consomme légitimement. Le premier
+composant durci figerait le noeud pour tous les suivants. D'où la règle :
+
+> Un schéma ne ferme que ce que son composant possède **en propre**. Sur un
+> noeud partagé, il décrit les champs que son builder consomme, et reste muet —
+> donc ouvert — sur les autres.
+
+Le silence n'y est pas un aveu d'inachèvement : un champ non décrit n'est pas
+hors contrat, il relève du contrat d'un autre composant. Deux conséquences :
+
+- l'ouverture d'un noeud partagé se justifie dans la description du schéma,
+  faute de quoi un lecteur la prendra pour un durcissement oublié et la
+  « corrigera » ;
+- un champ décrit par deux composants doit l'être de la même manière. Une
+  divergence est un désaccord de contrat, jamais une spécialisation locale.
 
 ## Origine d'une contrainte
 
