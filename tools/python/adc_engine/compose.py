@@ -13,6 +13,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-008-timeline
   - C-004-finding
   - C-007-decision
+  - C-005-recommendation
 """
 from __future__ import annotations
 
@@ -199,18 +200,47 @@ def _build_decision(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
-def _evidence_titles(data: dict[str, Any]) -> dict[str, str]:
-    """Index identifiant -> titre des preuves, pour la présentation.
+def _build_recommendation(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Recommandation : l'occurrence de `recommendations` portant `instance_id`.
 
-    Contexte de rendu au sens d'ADR-0008 : le modèle relie par identifiant, la
-    présentation a besoin du libellé correspondant sans que les composants
-    porteurs de références aient à dupliquer le texte.
+    La priorité reste dans sa valeur canonique anglaise : la traduction est une
+    affaire de rendu, jamais de modèle. Les constats liés sont conservés comme
+    identifiants, à l'image des preuves du constat.
     """
+    source = _entry_by_id(data.get("recommendations"), instance_id)
+    related = source.get("related_finding_ids")
+    return {
+        "id": source.get("id"),
+        "title": source.get("title"),
+        "priority": source.get("priority"),
+        "description": _paragraphs(source.get("description")),
+        "rationale": _paragraphs(source.get("rationale")),
+        "related_finding_ids": tuple(related) if isinstance(related, list) else (),
+    }
+
+
+def _titles_by_id(raw: Any) -> dict[str, str]:
+    """Index identifiant -> titre d'une collection source, pour la présentation."""
     index: dict[str, str] = {}
-    for item in data.get("evidence", []):
+    if not isinstance(raw, list):
+        return index
+    for item in raw:
         if isinstance(item, dict) and item.get("id") and item.get("title"):
             index[item["id"]] = item["title"]
     return index
+
+
+def _render_context(data: dict[str, Any]) -> dict[str, Any]:
+    """Index de présentation, au sens du contexte de rendu d'ADR-0008.
+
+    Le modèle relie par identifiant ; la présentation a besoin du libellé
+    correspondant sans que les composants porteurs de références aient à
+    dupliquer le texte de leur cible.
+    """
+    return {
+        "evidence_titles": _titles_by_id(data.get("evidence")),
+        "finding_titles": _titles_by_id(data.get("findings")),
+    }
 
 
 _BUILDERS: dict[str, Builder] = {
@@ -221,6 +251,7 @@ _BUILDERS: dict[str, Builder] = {
     "C-008-timeline": _build_timeline,
     "C-004-finding": _build_finding,
     "C-007-decision": _build_decision,
+    "C-005-recommendation": _build_recommendation,
 }
 
 
@@ -253,7 +284,7 @@ def compose_document(data: dict[str, Any]) -> Document:
             "language": report.get("language"),
             # Index techniques destinés au renderer, isolés des métadonnées
             # éditoriales du rapport (ADR-0008 : contexte nécessaire au rendu).
-            "render_context": {"evidence_titles": _evidence_titles(data)},
+            "render_context": _render_context(data),
         },
         components=tuple(instances),
         diagnostics=tuple(diagnostics),

@@ -292,6 +292,75 @@ def test_decisions_are_rendered_independently(tmp_path):
     assert "Mesures prises" not in paragraphs  # aucun titre de partie commun
 
 
+def test_recommendation_is_rendered_as_its_own_section(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Recommandation — Exécuter DBCC CHECKDB hors production" in paragraphs
+    assert "Description" in paragraphs
+    assert "Justification" in paragraphs
+    assert "Recommandations" not in paragraphs  # aucun titre de partie commun
+
+
+def test_recommendation_renders_finding_titles_never_ids(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    assert "Constats liés : Blocage observé pendant DBCC CHECKDB" in text
+    assert "finding-001" not in text
+    assert "recommendation-001" not in text
+
+
+def test_enumerations_are_english_in_the_ir_and_french_in_the_docx(tmp_path):
+    # Règle figée : valeurs canoniques anglaises dans le Document (IR),
+    # libellés français produits uniquement par la couche DOCX.
+    data = _data()
+    data["findings"][0]["severity"] = "critical"
+    data["recommendations"][0]["priority"] = "medium"
+    document = compose_document(data)
+
+    payloads = [c.payload for c in document.components]
+    assert any(p.get("severity") == "critical" for p in payloads)
+    assert any(p.get("priority") == "medium" for p in payloads)
+    assert not any("Critique" in str(p) or "Moyenne" in str(p) for p in payloads)
+
+    text = _texts(render_docx(document, tmp_path / "report.docx"))
+    assert "Gravité : Critique" in text
+    assert "Priorité : Moyenne" in text
+    assert "critical" not in text
+    assert "medium" not in text
+
+
+def test_unknown_enumeration_value_is_rendered_verbatim(tmp_path):
+    # Hors vocabulaire : on restitue la valeur de la source plutôt que
+    # d'inventer une traduction.
+    data = _data()
+    data["recommendations"][0]["priority"] = "blocking"
+    document = compose_document(data)
+    text = _texts(render_docx(document, tmp_path / "report.docx"))
+    assert "Priorité : blocking" in text
+
+
+def test_recommendations_are_rendered_in_source_order(tmp_path):
+    data = _data()
+    data["recommendations"].append(
+        {
+            "id": "recommendation-002",
+            "title": "Priorité critique déclarée en second",
+            "priority": "critical",
+            "description": "Description.",
+            "rationale": "Justification.",
+            "related_finding_ids": [],
+        }
+    )
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    first = paragraphs.index("Recommandation — Exécuter DBCC CHECKDB hors production")
+    second = paragraphs.index("Recommandation — Priorité critique déclarée en second")
+    assert first < second  # aucun regroupement ni tri par priorité
+
+
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):
     document = compose_document(_data())
     # Injecte une instance sans renderer : le rendu ne doit ni planter ni la rendre.

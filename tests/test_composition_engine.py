@@ -290,6 +290,82 @@ def test_decision_tolerates_missing_fields():
     assert payload["description"] == ()
 
 
+def _recommendations(doc) -> list[ComponentInstance]:
+    return [c for c in doc.components if c.component_id == "C-005-recommendation"]
+
+
+def test_recommendation_instance_matches_its_source_entry():
+    data = _data()
+    data["recommendations"].append(
+        {
+            "id": "recommendation-002",
+            "title": "Seconde recommandation",
+            "priority": "low",
+            "description": "Description de la seconde recommandation.",
+            "rationale": "Justification de la seconde recommandation.",
+            "related_finding_ids": [],
+        }
+    )
+    recommendations = _recommendations(compose_document(data))
+    assert [r.instance_id for r in recommendations] == [
+        "recommendation-001",
+        "recommendation-002",
+    ]
+    first = recommendations[0].payload
+    source = data["recommendations"][0]
+    assert first["id"] == source["id"]
+    assert first["title"] == source["title"]
+    assert first["description"] == (source["description"],)
+    assert first["rationale"] == (source["rationale"],)
+
+
+def test_recommendation_priority_stays_canonical_in_the_ir():
+    # Règle du moteur : anglais canonique dans l'IR, français uniquement au rendu.
+    payload = _recommendations(compose_document(_data()))[0].payload
+    assert payload["priority"] == "high"
+    assert "Élevée" not in str(payload)
+
+
+def test_recommendation_keeps_related_finding_ids_only():
+    payload = _recommendations(compose_document(_data()))[0].payload
+    assert payload["related_finding_ids"] == ("finding-001",)
+    assert not any("Blocage observé" in str(v) for v in payload.values())
+
+
+def test_recommendation_order_follows_the_source():
+    data = _data()
+    data["recommendations"].append(
+        {
+            "id": "recommendation-002",
+            "title": "Priorité critique déclarée en second",
+            "priority": "critical",
+            "description": "…",
+            "rationale": "…",
+            "related_finding_ids": [],
+        }
+    )
+    # Aucun tri par priorité : l'ordre de la source est conservé.
+    priorities = [r.payload["priority"] for r in _recommendations(compose_document(data))]
+    assert priorities == ["high", "critical"]
+
+
+def test_recommendation_tolerates_missing_fields():
+    data = _data()
+    data["recommendations"] = [{"id": "recommendation-001", "title": "Sans détail"}]
+    payload = _recommendations(compose_document(data))[0].payload
+    assert payload["priority"] is None  # jamais déduite
+    assert payload["description"] == ()
+    assert payload["rationale"] == ()
+    assert payload["related_finding_ids"] == ()
+
+
+def test_finding_titles_are_exposed_as_render_context():
+    doc = compose_document(_data())
+    assert doc.metadata["render_context"]["finding_titles"] == {
+        "finding-001": "Blocage observé pendant DBCC CHECKDB"
+    }
+
+
 def test_narrative_probable_cause_stays_diagnosed():
     # Comme incident-context : bloc narratif, hors catalogue, non traité ici.
     doc = compose_document(_data())
@@ -307,8 +383,8 @@ def test_unsupported_components_are_reported_not_crashed():
     # À ce stade, C-001 à C-004, C-008 et C-009 ont un builder : les autres
     # composants résolus doivent produire un diagnostic, jamais une exception.
     doc = compose_document(_data())
-    assert any("C-005-recommendation" in d for d in doc.diagnostics)
-    assert not any("C-007-decision" in d for d in doc.diagnostics)
+    assert any("C-006-risk" in d for d in doc.diagnostics)
+    assert not any("C-005-recommendation" in d for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
@@ -317,6 +393,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-008-timeline",
         "C-004-finding",
         "C-007-decision",
+        "C-005-recommendation",
     ]
 
 

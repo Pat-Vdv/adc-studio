@@ -10,6 +10,7 @@ substitution). Développement incrémental — composants rendus :
   - C-008-timeline
   - C-004-finding
   - C-007-decision
+  - C-005-recommendation
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -31,6 +32,26 @@ from .model import ComponentInstance, Document
 # techniques communs au document, par exemple les libellés des cibles
 # référencées par identifiant.
 Renderer = Callable[[Any, ComponentInstance, dict[str, Any]], None]
+
+
+# Libellés de présentation des énumérations partagées par plusieurs composants
+# (gravité d'un constat, priorité d'une recommandation). Le modèle conserve les
+# valeurs canoniques anglaises : la traduction n'existe que dans cette couche.
+_ENUM_LABELS: dict[str, str] = {
+    "low": "Faible",
+    "medium": "Moyenne",
+    "high": "Élevée",
+    "critical": "Critique",
+}
+
+
+def _enum_label(value: Any) -> Any:
+    """Libellé lisible d'une valeur d'énumération partagée.
+
+    Une valeur hors vocabulaire est restituée telle quelle : mieux vaut afficher
+    la valeur canonique de la source qu'inventer une traduction.
+    """
+    return _ENUM_LABELS.get(value, value) if isinstance(value, str) else value
 
 
 def _add_label_value(docx: Any, label: str, value: Any) -> None:
@@ -220,16 +241,16 @@ _FINDING_SECTIONS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _evidence_labels(evidence_ids: Any, context: dict[str, Any]) -> tuple[str, ...]:
-    """Libellés lisibles des preuves référencées.
+def _reference_labels(references: Any, context: dict[str, Any], index: str) -> tuple[str, ...]:
+    """Libellés lisibles des cibles référencées par identifiant.
 
     Les identifiants sont des clés de liaison internes : ils ne sont jamais
     écrits dans le document. Une référence dont le libellé est introuvable est
     donc omise — l'intégrité référentielle est garantie en amont par la
     validation de la source.
     """
-    titles = context.get("evidence_titles") or {}
-    return tuple(titles[ref] for ref in evidence_ids or () if ref in titles)
+    titles = context.get(index) or {}
+    return tuple(titles[ref] for ref in references or () if ref in titles)
 
 
 def _render_finding(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
@@ -240,7 +261,7 @@ def _render_finding(docx: Any, instance: ComponentInstance, context: dict[str, A
     title = payload.get("title")
     docx.add_heading(f"Constat — {title}" if title else "Constat", level=1)
 
-    _add_label_value(docx, "Gravité", payload.get("severity"))
+    _add_label_value(docx, "Gravité", _enum_label(payload.get("severity")))
 
     for key, heading in _FINDING_SECTIONS:
         blocks = payload.get(key) or ()
@@ -250,7 +271,7 @@ def _render_finding(docx: Any, instance: ComponentInstance, context: dict[str, A
         for block in blocks:
             docx.add_paragraph(str(block))
 
-    labels = _evidence_labels(payload.get("evidence_ids"), context)
+    labels = _reference_labels(payload.get("evidence_ids"), context, "evidence_titles")
     if labels:
         _add_label_value(docx, "Preuves", " ; ".join(labels))
 
@@ -270,6 +291,35 @@ def _render_decision(docx: Any, instance: ComponentInstance, context: dict[str, 
         docx.add_paragraph(str(block))
 
 
+_RECOMMENDATION_SECTIONS: tuple[tuple[str, str], ...] = (
+    ("description", "Description"),
+    ("rationale", "Justification"),
+)
+
+
+def _render_recommendation(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
+    payload = instance.payload
+
+    # Section autonome, dans l'ordre de la source : aucun regroupement ni tri
+    # par priorité, aucun titre de partie commun aux occurrences.
+    title = payload.get("title")
+    docx.add_heading(f"Recommandation — {title}" if title else "Recommandation", level=1)
+
+    _add_label_value(docx, "Priorité", _enum_label(payload.get("priority")))
+
+    for key, heading in _RECOMMENDATION_SECTIONS:
+        blocks = payload.get(key) or ()
+        if not blocks:
+            continue  # volet non renseigné : pas de titre orphelin
+        docx.add_heading(heading, level=2)
+        for block in blocks:
+            docx.add_paragraph(str(block))
+
+    labels = _reference_labels(payload.get("related_finding_ids"), context, "finding_titles")
+    if labels:
+        _add_label_value(docx, "Constats liés", " ; ".join(labels))
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
     "C-002-identity-page": _render_identity_page,
@@ -278,6 +328,7 @@ _RENDERERS: dict[str, Renderer] = {
     "C-008-timeline": _render_timeline,
     "C-004-finding": _render_finding,
     "C-007-decision": _render_decision,
+    "C-005-recommendation": _render_recommendation,
 }
 
 
