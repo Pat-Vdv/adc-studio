@@ -68,6 +68,21 @@ Un champ vide de l'atelier produit une propriété absente, jamais une propriét
 Écrire `"id": ""` violerait le contrat de C-002, alors que l'omettre le satisfait :
 l'absence s'exprime par l'absence.
 
+**R5 — La source contractuelle est un format d'échange, pas un document de travail.**
+Elle existe le temps d'un appel. Sa persistance est **exceptionnelle et motivée** —
+inspection, débogage, exemple, comparaison de deux traductions — jamais requise par le
+fonctionnement normal du pont.
+
+Une fonction de traduction n'a pas à matérialiser son résultat. La matérialiser
+systématiquement créerait une **seconde représentation persistante du même état**, et
+avec elle quatre questions qu'aucun besoin ne justifie d'ouvrir : sa fraîcheur vis-à-vis
+de l'atelier, laquelle des deux fait autorité, son nettoyage, et le sort d'une
+modification humaine apportée à la mauvaise. L'atelier est la seule source d'autorité ;
+le document produit est le seul artefact durable.
+
+Écrire toujours la source ne serait donc pas une commodité, mais un changement
+d'architecture.
+
 ## Portée
 
 Cette ADR ne décrit pas un pont particulier, mais le rapport entre **tout** espace de
@@ -85,14 +100,17 @@ Deviennent interdits, sans révision de cette ADR :
 - ajouter à un `schema.json` une clé issue d'un vocabulaire d'atelier ;
 - faire lire `metadata.yml`, ou tout autre artefact d'atelier, par le moteur ;
 - déduire, compléter ou reformater une valeur pendant la traduction ;
-- écrire une propriété vide plutôt que de l'omettre.
+- écrire une propriété vide plutôt que de l'omettre ;
+- faire de la source contractuelle un artefact écrit par défaut, ou la donner à
+  éditer à un humain.
 
 Restent ouverts :
 
 - le nombre de ponts et leur technologie ;
 - l'évolution du vocabulaire d'un atelier, qui ne concerne que son propre pont ;
 - l'ajout de champs d'atelier sans contrepartie contractuelle — ils ne traversent
-  simplement pas.
+  simplement pas ;
+- les moyens d'inspecter une traduction, tant qu'ils restent explicitement demandés.
 
 ## Liens
 
