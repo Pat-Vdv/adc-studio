@@ -5,6 +5,7 @@ directement depuis l'IR avec python-docx (aucun template rempli par
 substitution). Développement incrémental — composants rendus :
   - C-001-cover
   - C-002-identity-page
+  - C-003-executive-summary
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -129,9 +130,34 @@ def _render_identity_page(docx: Any, instance: ComponentInstance) -> None:
         _add_table(docx, columns, rows)
 
 
+_SUMMARY_SECTIONS: tuple[tuple[str, str], ...] = (
+    ("context", "Contexte"),
+    ("business_impact", "Impact métier"),
+    ("conclusion", "Conclusion"),
+    ("recommended_action", "Action recommandée"),
+)
+
+
+def _render_executive_summary(docx: Any, instance: ComponentInstance) -> None:
+    payload = instance.payload
+
+    # Le résumé exécutif ouvre le corps du rapport : il démarre sur sa page.
+    docx.add_page_break()
+    docx.add_heading(payload.get("heading") or "Résumé exécutif", level=1)
+
+    for key, heading in _SUMMARY_SECTIONS:
+        blocks = payload.get(key) or ()
+        if not blocks:
+            continue  # volet non renseigné : pas de titre orphelin
+        docx.add_heading(heading, level=2)
+        for block in blocks:
+            docx.add_paragraph(str(block))
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
     "C-002-identity-page": _render_identity_page,
+    "C-003-executive-summary": _render_executive_summary,
 }
 
 

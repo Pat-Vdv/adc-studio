@@ -74,13 +74,47 @@ def test_identity_page_reads_optional_blocks_when_present():
     assert identity.payload["distribution"][0]["name"] == "Soc01"
 
 
-def test_unsupported_components_are_reported_not_crashed():
-    # À ce stade, seuls C-001-cover et C-002-identity-page ont un builder : les
-    # autres composants résolus doivent produire un diagnostic, jamais une exception.
+def test_executive_summary_follows_identity_page():
     doc = compose_document(_data())
-    assert any("C-003-executive-summary" in d for d in doc.diagnostics)
-    assert not any("C-002-identity-page" in d for d in doc.diagnostics)
-    assert [c.component_id for c in doc.components] == ["C-001-cover", "C-002-identity-page"]
+    summary = doc.components[2]
+    assert summary.component_id == "C-003-executive-summary"
+    assert summary.instance_id == "executive-summary"
+    assert summary.payload["heading"] == "Résumé exécutif"
+    # La source de référence porte encore des marqueurs de rédaction.
+    assert summary.payload["context"] == ("TODO — résumer l’incident.",)
+    assert summary.payload["recommended_action"] == ("TODO — résumer l’action prioritaire.",)
+
+
+def test_executive_summary_splits_paragraphs():
+    data = _data()
+    data["executive_summary"]["context"] = "Premier paragraphe.\n\n  Second paragraphe.  \n\n\n"
+    data["executive_summary"]["conclusion"] = ["Ligne A", "", "Ligne B"]
+    summary = compose_document(data).components[2]
+    assert summary.payload["context"] == ("Premier paragraphe.", "Second paragraphe.")
+    assert summary.payload["conclusion"] == ("Ligne A", "Ligne B")
+
+
+def test_executive_summary_missing_sections_are_empty():
+    data = _data()
+    data["executive_summary"] = {"context": "Seul volet renseigné."}
+    summary = compose_document(data).components[2]
+    assert summary.payload["context"] == ("Seul volet renseigné.",)
+    assert summary.payload["business_impact"] == ()
+    assert summary.payload["conclusion"] == ()
+    assert summary.payload["recommended_action"] == ()
+
+
+def test_unsupported_components_are_reported_not_crashed():
+    # À ce stade, C-001 à C-003 ont un builder : les autres composants résolus
+    # doivent produire un diagnostic, jamais une exception.
+    doc = compose_document(_data())
+    assert any("C-009-environment" in d for d in doc.diagnostics)
+    assert not any("C-003-executive-summary" in d for d in doc.diagnostics)
+    assert [c.component_id for c in doc.components] == [
+        "C-001-cover",
+        "C-002-identity-page",
+        "C-003-executive-summary",
+    ]
 
 
 def test_composition_matches_resolution_order():

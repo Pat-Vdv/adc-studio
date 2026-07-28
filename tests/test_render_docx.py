@@ -1,7 +1,8 @@
 """Tests du renderer DOCX (increment 2).
 
-Périmètre : rendu de la Cover (C-001-cover) et de l'identité documentaire
-(C-002-identity-page) depuis le Document IR.
+Périmètre : rendu de la Cover (C-001-cover), de l'identité documentaire
+(C-002-identity-page) et du résumé exécutif (C-003-executive-summary) depuis
+le Document IR.
 """
 from __future__ import annotations
 
@@ -79,6 +80,30 @@ def test_identity_page_renders_optional_tables(tmp_path):
     rows = [[c.text for c in row.cells] for row in docx.tables[0].rows]
     assert rows[0] == ["Version", "Date", "Auteur", "Objet"]
     assert rows[1] == ["0.1-draft", "2026-07-28", "A.D.C. srl", "Création"]
+
+
+def test_executive_summary_texts_present(tmp_path):
+    data = _data()
+    data["executive_summary"]["context"] = "Contexte du blocage.\n\nSeconde partie du contexte."
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Résumé exécutif" in paragraphs
+    assert "Contexte" in paragraphs
+    assert "Impact métier" in paragraphs
+    assert "Contexte du blocage." in paragraphs
+    assert "Seconde partie du contexte." in paragraphs
+
+
+def test_executive_summary_omits_empty_sections(tmp_path):
+    data = _data()
+    data["executive_summary"] = {"context": "Seul volet renseigné."}
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Contexte" in paragraphs
+    assert "Impact métier" not in paragraphs  # pas de titre sans contenu
+    assert "Action recommandée" not in paragraphs
 
 
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):

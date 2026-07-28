@@ -8,6 +8,7 @@ composant résolu mais sans builder ne casse rien : il produit un diagnostic.
 Développement incrémental (cas SQL Server Incident) — composants pris en charge :
   - C-001-cover
   - C-002-identity-page
+  - C-003-executive-summary
 """
 from __future__ import annotations
 
@@ -29,6 +30,22 @@ def _rows(raw: Any, fields: tuple[str, ...]) -> tuple[dict[str, Any], ...]:
     if not isinstance(raw, list):
         return ()
     return tuple({f: item.get(f) for f in fields} for item in raw if isinstance(item, dict))
+
+
+def _paragraphs(raw: Any) -> tuple[str, ...]:
+    """Normalise un texte source en paragraphes.
+
+    Une chaîne est découpée sur les lignes vides, une liste est reprise telle
+    quelle. Les fragments vides disparaissent : au rendu, un champ absent et un
+    champ vide se comportent identiquement.
+    """
+    if isinstance(raw, str):
+        blocks = raw.split("\n\n")
+    elif isinstance(raw, list):
+        blocks = [item for item in raw if isinstance(item, str)]
+    else:
+        return ()
+    return tuple(block.strip() for block in blocks if block.strip())
 
 
 def _build_cover(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
@@ -74,9 +91,28 @@ def _build_identity_page(data: dict[str, Any], instance_id: str) -> dict[str, An
     }
 
 
+def _build_executive_summary(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Résumé exécutif : quatre volets narratifs, chacun en paragraphes.
+
+    Un volet absent de la source produit un tuple vide ; c'est le rendu qui
+    décide d'omettre la sous-section correspondante.
+    """
+    summary = data.get("executive_summary", {})
+    if not isinstance(summary, dict):
+        summary = {}
+    return {
+        "heading": "Résumé exécutif",
+        "context": _paragraphs(summary.get("context")),
+        "business_impact": _paragraphs(summary.get("business_impact")),
+        "conclusion": _paragraphs(summary.get("conclusion")),
+        "recommended_action": _paragraphs(summary.get("recommended_action")),
+    }
+
+
 _BUILDERS: dict[str, Builder] = {
     "C-001-cover": _build_cover,
     "C-002-identity-page": _build_identity_page,
+    "C-003-executive-summary": _build_executive_summary,
 }
 
 
