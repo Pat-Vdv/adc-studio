@@ -88,16 +88,23 @@ def test_a_fresh_mission_is_composable_though_editorially_empty(tmp_path):
     """
     result = _run(_mission(tmp_path))
     assert "Composants rendus : 4" in result.stdout
-    assert "Reste à rédiger dans la mission :" in result.stdout
-    assert "$.findings: required field missing" in result.stdout
+    assert "Le rapport est incomplet." in result.stdout
+    assert "  • Findings" in result.stdout
 
 
 def test_the_two_natures_of_diagnostic_are_presented_apart(tmp_path):
     result = _run(_mission(tmp_path))
-    remaining = result.stdout.index("Reste à rédiger dans la mission :")
+    sections = result.stdout.index("Sections restant à rédiger :")
     engine = result.stdout.index("Composants non rendus (diagnostics) :")
-    assert remaining < engine
+    assert sections < engine
     assert "cardinalité non respectée" in result.stdout[engine:]
+
+
+def test_a_missing_section_is_never_shown_as_a_raw_diagnostic(tmp_path):
+    # C'est tout l'objet de la couche de présentation : un rédacteur lit des
+    # sections, pas des chemins JSON.
+    result = _run(_mission(tmp_path))
+    assert "$.findings: required field missing" not in result.stdout
 
 
 # --- La source ne persiste pas (ADR-0011, R5) ------------------------------

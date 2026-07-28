@@ -17,8 +17,8 @@ inspection, ce qui reste exceptionnel et jamais requis (ADR-0011, R5).
 Trois natures d'écart, trois comportements (ADR-0009, I9) :
 
 - **contrat violé** : rien n'est généré ;
-- **défaut métier** : le document est généré, l'écart l'accompagne — il dit ce
-  qui reste à rédiger dans la mission ;
+- **défaut métier** : le document est généré, l'écart l'accompagne. Une section
+  absente dit ce qui reste à rédiger ; le reste dit ce qui est fautif ;
 - **composant non rendu** : le document est généré, l'écart l'accompagne.
 """
 from __future__ import annotations
@@ -31,6 +31,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import adc_mission  # noqa: E402
+import adc_presentation  # noqa: E402
 from adc_engine import SourceContractError, compose_from_source  # noqa: E402
 from adc_engine.render_docx import render_docx  # noqa: E402
 
@@ -82,12 +83,8 @@ def main() -> int:
 
     print(f"OK : rapport généré -> {output}")
     print(f"Composants rendus : {len(document.components)}")
-    if document.source_diagnostics:
-        # Le contenu du rapport reste à écrire dans la mission ; le document
-        # existe et est exploitable.
-        print("Reste à rédiger dans la mission :")
-        for diagnostic in document.source_diagnostics:
-            print(f"- {diagnostic}")
+    for line in adc_presentation.source_lines(document.source_diagnostics):
+        print(line)
     if document.diagnostics:
         print("Composants non rendus (diagnostics) :")
         for diagnostic in document.diagnostics:
