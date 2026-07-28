@@ -242,10 +242,13 @@ def test_finding_payload_keeps_evidence_ids_only():
 
 
 def test_evidence_titles_are_exposed_as_render_context():
+    # Index technique namespacé : il ne se confond pas avec les métadonnées
+    # éditoriales du rapport (client, référence, version…).
     doc = compose_document(_data())
-    assert doc.metadata["evidence_titles"] == {
+    assert doc.metadata["render_context"]["evidence_titles"] == {
         "evidence-001": "État et configuration de l’environnement SQL"
     }
+    assert "evidence_titles" not in doc.metadata
 
 
 def test_narrative_incident_context_stays_diagnosed():

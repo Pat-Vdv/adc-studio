@@ -224,8 +224,9 @@ def compose_document(data: dict[str, Any]) -> Document:
             "date": report.get("date"),
             "confidentiality": report.get("confidentiality"),
             "language": report.get("language"),
-            # Contexte de rendu : libellés des cibles référencées par identifiant.
-            "evidence_titles": _evidence_titles(data),
+            # Index techniques destinés au renderer, isolés des métadonnées
+            # éditoriales du rapport (ADR-0008 : contexte nécessaire au rendu).
+            "render_context": {"evidence_titles": _evidence_titles(data)},
         },
         components=tuple(instances),
         diagnostics=tuple(diagnostics),

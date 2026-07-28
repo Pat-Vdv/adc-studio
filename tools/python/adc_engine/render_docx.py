@@ -26,8 +26,9 @@ from docx.shared import Pt
 from .model import ComponentInstance, Document
 
 # Un renderer reçoit (docx, instance, contexte) et écrit dans le document Word
-# en place. Le contexte porte les informations de présentation communes au
-# document (ADR-0008), par exemple les libellés des cibles référencées.
+# en place. Le contexte est le `render_context` de l'IR (ADR-0008) : index
+# techniques communs au document, par exemple les libellés des cibles
+# référencées par identifiant.
 Renderer = Callable[[Any, ComponentInstance, dict[str, Any]], None]
 
 
@@ -274,7 +275,7 @@ def render_docx(document: Document, output_path: str | Path) -> Path:
 
     # Contexte de présentation, commun à toutes les instances : il vient de
     # l'IR, jamais de la source. Le renderer ne connaît pas le JSON d'entrée.
-    context = dict(document.metadata)
+    context = dict(document.metadata.get("render_context") or {})
 
     docx = DocxDocument()
     for instance in document.components:
