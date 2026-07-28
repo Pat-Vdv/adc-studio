@@ -76,11 +76,34 @@ def test_profile_without_components_is_rejected(tmp_path):
         load_profile(path)
 
 
-def test_duplicate_block_is_rejected(tmp_path):
+def test_duplicate_repeatable_block_is_rejected(tmp_path):
+    # Deux entrées sans `instance` pour un même type se confondent : c'est la
+    # cardinalité qui exprime la répétition, pas la répétition de l'entrée.
     entry = {"type": "C-004-finding", "min": 0, "max": None}
     path = _write_profile(tmp_path / "profile.yaml", {"id": "P-999", "components": [entry, entry]})
     with pytest.raises(ValueError, match="déclaré deux fois"):
         load_profile(path)
+
+
+def test_duplicate_named_block_is_rejected(tmp_path):
+    entry = {"type": "narrative", "instance": "conclusion", "min": 1, "max": 1}
+    path = _write_profile(tmp_path / "profile.yaml", {"id": "P-999", "components": [entry, entry]})
+    with pytest.raises(ValueError, match="déclaré deux fois"):
+        load_profile(path)
+
+
+def test_same_type_with_distinct_instances_is_accepted(tmp_path):
+    # Le couple (type, instance) est la clé : plusieurs blocs narratifs nommés
+    # coexistent sans créer de faux types de composants.
+    document = {
+        "id": "P-999",
+        "components": [
+            {"type": "narrative", "instance": "incident-context", "min": 1, "max": 1},
+            {"type": "narrative", "instance": "conclusion", "min": 1, "max": 1},
+        ],
+    }
+    profile = load_profile(_write_profile(tmp_path / "profile.yaml", document))
+    assert [e.instance_id for e in profile.entries] == ["incident-context", "conclusion"]
 
 
 # --- Le profil pilote réellement l'ordre ----------------------------------

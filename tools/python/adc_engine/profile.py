@@ -4,6 +4,20 @@ Le profil déclare **la structure** : quels blocs se succèdent, dans quel ordre
 et combien d'occurrences chacun admet. Il ne déclare aucune condition sur les
 données — pas de langage `when`, pas d'expression : savoir si la source produit
 zéro, une ou plusieurs occurrences relève de la résolution (ADR-0008 § 3).
+
+Invariants d'une entrée de profil, tous vérifiés au chargement :
+
+- `type` désigne la **famille** de composant : identifiant catalogue, ou
+  marqueur de bloc narratif.
+- `instance` est **facultatif**. Présent, il désigne un bloc **nommé** de cette
+  famille, à occurrence unique : `max` doit alors valoir 1.
+- le couple `(type, instance)` est **unique** dans un profil.
+- deux entrées sans `instance` pour un même `type` sont donc refusées : un
+  composant répétable est déclaré une fois, sa cardinalité dit le reste. Un
+  besoin de le déclarer plusieurs fois devra être documenté explicitement avant
+  d'assouplir cette règle.
+- `min` et `max` sont **écrits**, `max: null` valant « illimité » ; une clé
+  omise est une erreur, jamais un défaut implicite.
 """
 from __future__ import annotations
 
@@ -94,6 +108,8 @@ def load_profile(path: str | Path) -> Profile:
 
     entries = tuple(_entry(path, index, raw) for index, raw in enumerate(raw_entries))
 
+    # Unicité de (type, instance) : deux entrées sans `instance` pour un même
+    # type se confondent donc, et sont refusées.
     declared = [(e.component_id, e.instance_id) for e in entries]
     if len(set(declared)) != len(declared):
         _fail(path, "$.components", "bloc déclaré deux fois")
