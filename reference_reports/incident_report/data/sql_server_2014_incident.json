@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0",
+  "report": {
+    "id": "ADC-MECA-2026-SQL2014-001",
+    "title": "Investigation — Blocage SQL Server lors de DBCC CHECKDB",
+    "subtitle": "Analyse technique et recommandations",
+    "reference": "ADC-MECA-2026-SQL2014-001",
+    "version": "0.1-draft",
+    "date": "2026-07-28",
+    "author": "A.D.C. srl",
+    "confidentiality": "Confidentiel",
+    "language": "fr-BE"
+  },
+  "client": {
+    "name": "Soc01"
+  },
+  "executive_summary": {
+    "context": "TODO — résumer l’incident.",
+    "conclusion": "TODO — synthétiser les conclusions attestées.",
+    "business_impact": "TODO — décrire l’impact métier observé.",
+    "recommended_action": "TODO — résumer l’action prioritaire."
+  },
+  "incident_context": {
+    "description": "TODO — décrire précisément les circonstances.",
+    "trigger": "Exécution de DBCC CHECKDB",
+    "scope": "Instance SQL Server APPPROD",
+    "status": "investigated"
+  },
+  "environment": {
+    "server_name": "SRV-SQL-01",
+    "operating_system": "Windows Server 2012 R2",
+    "database_engine": "Microsoft SQL Server 2014 Standard",
+    "database_engine_version": "12.0.x",
+    "instance": "APPPROD",
+    "primary_database": "APPPROD_DB",
+    "collation": "French_CI_AS",
+    "cpu_logical_count": 40,
+    "memory_gb": 64,
+    "storage": [
+      {
+        "volume": "C:",
+        "role": "Système",
+        "allocation_unit_kb": null
+      },
+      {
+        "volume": "D:",
+        "role": "SQL",
+        "allocation_unit_kb": 64
+      },
+      {
+        "volume": "E:",
+        "role": "AppProd",
+        "allocation_unit_kb": null
+      },
+      {
+        "volume": "I:",
+        "role": "Sauvegardes SQL",
+        "allocation_unit_kb": null
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "id": "timeline-001",
+      "timestamp": "2026-07-23",
+      "title": "Sauvegardes préalables",
+      "description": "Sauvegardes complètes et VERIFYONLY réalisés avant intervention."
+    }
+  ],
+  "investigations": [
+    {
+      "id": "investigation-001",
+      "title": "Analyse de l’environnement SQL Server",
+      "description": "TODO — documenter les contrôles réellement exécutés.",
+      "result": "TODO"
+    }
+  ],
+  "findings": [
+    {
+      "id": "finding-001",
+      "title": "Blocage observé pendant DBCC CHECKDB",
+      "severity": "high",
+      "observation": "TODO — symptômes attestés.",
+      "impact": "TODO — impact constaté.",
+      "analysis": "TODO — analyse technique sans présenter une hypothèse comme un fait.",
+      "evidence_ids": [
+        "evidence-001"
+      ]
+    }
+  ],
+  "probable_cause": {
+    "statement": "TODO — cause probable et niveau de confiance.",
+    "confidence": "unknown",
+    "supporting_finding_ids": [
+      "finding-001"
+    ]
+  },
+  "actions_taken": [
+    {
+      "id": "decision-001",
+      "title": "Sécurisation préalable par sauvegarde",
+      "description": "Sauvegardes complètes créées et vérifiées avant les opérations sensibles.",
+      "status": "completed"
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "recommendation-001",
+      "title": "Exécuter DBCC CHECKDB hors production",
+      "priority": "high",
+      "description": "Exécuter le contrôle sur une restauration récente lorsque le contexte opérationnel l’exige.",
+      "rationale": "Réduire l’exposition de la production aux charges lourdes de contrôle d’intégrité.",
+      "related_finding_ids": [
+        "finding-001"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "id": "risk-001",
+      "title": "Nouvelle indisponibilité lors d’un contrôle lourd en production",
+      "level": "high",
+      "description": "TODO — décrire le risque résiduel.",
+      "mitigation_recommendation_ids": [
+        "recommendation-001"
+      ]
+    }
+  ],
+  "conclusion": "TODO — conclusion finale du rapport client.",
+  "evidence": [
+    {
+      "id": "evidence-001",
+      "title": "État et configuration de l’environnement SQL",
+      "kind": "technical_observation",
+      "description": "Informations techniques collectées sur le serveur et l’instance.",
+      "content": "TODO — synthèse ou référence vers annexe.",
+      "source": "Serveur SRV-SQL-01"
+    }
+  ],
+  "annexes": []
+}
