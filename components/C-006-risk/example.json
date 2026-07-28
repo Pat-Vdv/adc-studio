@@ -1,4 +1,9 @@
 {
-  "component_id":"",
-  "component_version":"1.0"
+  "id": "risk-001",
+  "title": "Nouvelle indisponibilité lors d'un contrôle lourd en production",
+  "level": "high",
+  "description": "Tant que les contrôles d'intégrité s'exécutent sur l'instance de production, un blocage comparable peut se reproduire lors de la prochaine fenêtre de vérification.",
+  "mitigation_recommendation_ids": [
+    "recommendation-001"
+  ]
 }

@@ -522,6 +522,90 @@ def test_recommendation_example_covers_the_whole_contract():
     assert set(_valid_recommendation()) == set(schema["properties"])
 
 
+# --- C-006 Risk ------------------------------------------------------------
+
+C_006 = "C-006-risk"
+
+
+def _risk_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_006), component=C_006
+    )
+
+
+def _valid_risk() -> dict:
+    return adc_contracts.load_json(adc_contracts.example_path(C_006))
+
+
+def test_risk_of_the_reference_report_is_valid():
+    for risk in _reference_source()["risks"]:
+        assert _risk_errors(risk) == ()
+
+
+def test_risk_requires_only_its_identifier():
+    # Prérequis de consommation : le moteur instancie l'occurrence par son
+    # identifiant. Rien d'autre n'est exigé, ni par le validateur ni par la
+    # composition.
+    assert _risk_errors({"id": "risk-001"}) == ()
+    errors = _risk_errors({k: v for k, v in _valid_risk().items() if k != "id"})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_006}: $: ")
+    assert "'id'" in errors[0]
+
+
+def test_risk_rejects_an_empty_identifier():
+    errors = _risk_errors(dict(_valid_risk(), id=""))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_006}: $.id: ")
+
+
+@pytest.mark.parametrize("level", ["low", "high", "majeur", "P1", "à qualifier"])
+def test_risk_level_is_deliberately_not_a_closed_vocabulary(level):
+    """Absence d'`enum` assumée, pas oubliée (ADR-0010).
+
+    Aucun vocabulaire n'est fermé pour ce champ : ni le validateur ni une
+    règle documentée ne le font. Que le rendu sache traduire « high » relève
+    de la présentation et n'atteste rien. Ne pas aligner sur `severity` ou
+    `priority` par symétrie apparente.
+    """
+    assert _risk_errors(dict(_valid_risk(), level=level)) == ()
+
+
+def test_risk_rejects_an_empty_level():
+    errors = _risk_errors(dict(_valid_risk(), level=""))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_006}: $.level: ")
+
+
+def test_risk_says_nothing_about_reference_resolvability():
+    fragment = dict(_valid_risk(), mitigation_recommendation_ids=["reco-404", "reco-404"])
+    assert _risk_errors(fragment) == ()
+
+
+def test_risk_rejects_a_non_textual_reference():
+    fragment = dict(_valid_risk(), mitigation_recommendation_ids=["recommendation-001", 42])
+    errors = _risk_errors(fragment)
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_006}: $.mitigation_recommendation_ids[1]: ")
+
+
+def test_risk_rejects_an_unknown_field():
+    errors = _risk_errors(dict(_valid_risk(), probabilite="moyenne"))
+    assert len(errors) == 1
+    assert "probabilite" in errors[0]
+
+
+def test_risk_rejects_a_collection_instead_of_an_occurrence():
+    errors = _risk_errors([_valid_risk()])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_006}: $: ")
+
+
+def test_risk_example_covers_the_whole_contract():
+    schema = adc_contracts.load_schema(C_006)
+    assert set(_valid_risk()) == set(schema["properties"])
+
+
 def test_components_without_contract_are_exactly_the_declared_ones():
     """Suivi explicite des trous restants, plutôt qu'un silence.
 
