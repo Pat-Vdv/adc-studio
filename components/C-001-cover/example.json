@@ -1,4 +1,14 @@
 {
-  "component_id":"",
-  "component_version":"1.0"
+  "report": {
+    "title": "Investigation — Blocage SQL Server lors de DBCC CHECKDB",
+    "subtitle": "Analyse technique et recommandations",
+    "reference": "ADC-MECA-2026-SQL2014-001",
+    "version": "0.1-draft",
+    "date": "2026-07-28",
+    "author": "A.D.C. srl",
+    "confidentiality": "Confidentiel"
+  },
+  "client": {
+    "name": "Soc01"
+  }
 }

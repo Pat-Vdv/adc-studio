@@ -747,6 +747,129 @@ def test_evidence_example_covers_the_whole_contract():
     assert set(_valid_evidence()) == set(schema["properties"])
 
 
+# --- C-001 Cover -----------------------------------------------------------
+
+C_001 = "C-001-cover"
+_COVER_REPORT_FIELDS = (
+    "title",
+    "subtitle",
+    "reference",
+    "version",
+    "date",
+    "author",
+    "confidentiality",
+)
+
+
+def _cover_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_001), component=C_001
+    )
+
+
+def _valid_cover() -> dict:
+    return adc_contracts.load_json(adc_contracts.example_path(C_001))
+
+
+def test_cover_of_the_reference_report_is_valid():
+    # Le builder de la couverture reçoit la source entière et y prélève deux
+    # noeuds : c'est donc bien la racine que ce contrat valide.
+    assert _cover_errors(_reference_source()) == ()
+
+
+@pytest.mark.parametrize("node", ["report", "client"])
+def test_cover_requires_the_two_nodes_the_validator_requires(node):
+    fragment = {k: v for k, v in _valid_cover().items() if k != node}
+    errors = _cover_errors(fragment)
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_001}: $: ")
+    assert f"'{node}'" in errors[0]
+
+
+def test_cover_requires_no_field_inside_those_nodes():
+    # Aucun champ n'est un prérequis de consommation : la couverture se compose
+    # et se rend sans titre. Un titre absent est une restitution dégradée, pas
+    # un contrat violé (ADR-0010).
+    assert _cover_errors({"report": {}, "client": {}}) == ()
+
+
+@pytest.mark.parametrize(
+    "fragment",
+    [
+        {"report": {"id": "ADC-MECA-2026-SQL2014-001"}, "client": {}},
+        {"report": {"language": "fr-BE"}, "client": {}},
+        {"report": {"revisions": [{"version": "0.1-draft"}]}, "client": {}},
+        {"report": {}, "client": {"vat_number": "BE0123456789"}},
+        {"report": {}, "client": {}, "conclusion": "Hors du fragment de la couverture."},
+    ],
+)
+def test_cover_does_not_close_a_shared_node(fragment):
+    """Ouverture assumée, pas un durcissement oublié (ADR-0010).
+
+    `report` et `client` sont lus par C-002 comme par C-001, et la racine porte
+    les noeuds de tous les autres composants. Fermer l'un d'eux ici ferait
+    rejeter par la couverture des champs qu'un autre composant consomme
+    légitimement. Ne pas ajouter d'`additionalProperties: false`.
+    """
+    assert _cover_errors(fragment) == ()
+
+
+@pytest.mark.parametrize("field", _COVER_REPORT_FIELDS)
+def test_cover_rejects_a_non_textual_report_field(field):
+    errors = _cover_errors({"report": {field: 42}, "client": {}})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_001}: $.report.{field}: ")
+
+
+def test_cover_rejects_a_non_textual_client_name():
+    errors = _cover_errors({"report": {}, "client": {"name": ["Soc01"]}})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_001}: $.client.name: ")
+
+
+@pytest.mark.parametrize("date", ["2026-07-28", "28/07/2026", "juillet 2026"])
+def test_cover_imposes_no_date_format(date):
+    # Comme l'horodatage d'un événement : le nom du champ ne fait pas contrat,
+    # la valeur est imprimée telle quelle.
+    assert _cover_errors({"report": {"date": date}, "client": {}}) == ()
+
+
+@pytest.mark.parametrize(
+    "confidentiality", ["Confidentiel", "Public", "Diffusion restreinte", "TLP:AMBER"]
+)
+def test_cover_confidentiality_is_deliberately_not_a_closed_vocabulary(confidentiality):
+    """Absence d'`enum` assumée, pas oubliée (ADR-0010).
+
+    Aucun vocabulaire n'est fermé pour cette mention : ni le validateur ni une
+    règle documentée n'en arrête la liste. Que la donnée de référence porte
+    « Confidentiel » n'atteste rien de plus.
+    """
+    assert _cover_errors({"report": {"confidentiality": confidentiality}, "client": {}}) == ()
+
+
+@pytest.mark.parametrize("node", ["report", "client"])
+def test_cover_rejects_a_textual_node(node):
+    errors = _cover_errors(dict(_valid_cover(), **{node: "Soc01"}))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_001}: $.{node}: ")
+
+
+def test_cover_says_nothing_about_the_document_type():
+    # Le type de document figure au payload mais pas au contrat : le builder le
+    # pose, il ne le lit pas dans la source.
+    schema = adc_contracts.load_schema(C_001)
+    assert "document_type" not in schema["properties"]["report"]["properties"]
+    assert "document_type" not in schema["properties"]
+
+
+def test_cover_example_covers_the_whole_contract():
+    example = _valid_cover()
+    schema = adc_contracts.load_schema(C_001)
+    assert set(example) == set(schema["properties"])
+    assert set(example["report"]) == set(schema["properties"]["report"]["properties"])
+    assert set(example["client"]) == set(schema["properties"]["client"]["properties"])
+
+
 def test_components_without_contract_are_exactly_the_declared_ones():
     """Suivi explicite des trous restants, plutôt qu'un silence.
 
