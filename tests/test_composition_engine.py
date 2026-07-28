@@ -108,6 +108,11 @@ def test_executive_summary_reads_every_section_from_source():
 
 
 def test_executive_summary_splits_paragraphs():
+    """Robustesse du builder, pas contrat (ADR-0010).
+
+    La forme canonique d'un volet est une chaîne ; la liste est une tolérance
+    d'implémentation, hors du contrat décrit par `schema.json`.
+    """
     data = _data()
     data["executive_summary"]["context"] = "Premier paragraphe.\n\n  Second paragraphe.  \n\n\n"
     data["executive_summary"]["conclusion"] = ["Ligne A", "", "Ligne B"]
