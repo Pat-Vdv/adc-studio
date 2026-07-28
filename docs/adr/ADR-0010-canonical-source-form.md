@@ -93,6 +93,27 @@ Cette dernière ligne explique une asymétrie assumée : `severity` et `priority
 portent un `enum`, `level` non — le validateur ferme les deux premiers
 vocabulaires, aucun ne ferme le troisième.
 
+### Prérequis de consommation et qualité de restitution
+
+Le prérequis de consommation se reconnaît à une question simple : **le moteur
+peut-il encore travailler ?**
+
+| Champ | Sans lui | Nature |
+|---|---|---|
+| `id` | l'occurrence n'est ni identifiée ni instanciée : elle est absente du document | prérequis de consommation |
+| `title` | l'occurrence est composée et rendue ; seule la résolution d'une référence perd son libellé humain | qualité de restitution |
+
+Les index de résolution utilisent les titres lorsqu'ils sont présents. L'absence
+de titre n'empêche pas la consommation d'un composant, mais peut empêcher la
+restitution d'un libellé lisible lors de la résolution des références : c'est
+une **capacité dégradée**, pas un contrat violé.
+
+Rendre `title` obligatoire pour préserver la richesse des renvois ferait porter
+au contrat source une exigence de présentation. Cette promotion n'aura lieu que
+si le domaine énonce la règle — « toute preuve, tout constat et toute
+recommandation doivent être nommés » — et elle suivra alors le chemin habituel :
+schéma, exemple, tests, éventuellement validation.
+
 ## Conséquences
 
 - Un schéma n'est pas élargi au motif que l'implémentation accepte davantage.
