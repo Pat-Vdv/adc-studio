@@ -62,18 +62,36 @@ Un composant répétable décrit donc **une occurrence**. La collection qui les
 porte — sa présence, sa cardinalité, l'unicité de ses identifiants — relève du
 noeud parent et du profil, jamais du schéma du composant.
 
-## Contraintes de structure et règles métier
+## Origine d'une contrainte
 
-Deux natures de contraintes cohabitent dans un schéma, et seule la seconde
-demande une attestation dans le domaine :
+Avant d'ajouter une contrainte, il faut savoir **d'où elle tire sa légitimité**.
+Quatre origines, dont trois seulement autorisent une entrée dans le schéma :
 
-- **Structure** — `type`, `additionalProperties: false`, et `minLength: 1` sur
-  un identifiant. Un identifiant vide n'a aucune sémantique : il ne permet ni
-  référence, ni résolution, ni unicité, ni diagnostic utile. Ces contraintes
-  peuvent être posées même quand l'implémentation ne les vérifie pas encore.
-- **Règles métier** — `enum`, bornes numériques, `format`, longueurs minimales
-  sur du texte rédigé. Elles ne sont posées que si un vocabulaire ou une règle
-  existe déjà et est attesté, jamais par intuition à partir du nom d'un champ.
+| Origine | Exemple | Dans le schéma ? |
+|---|---|---|
+| **Domaine** | `severity`, `priority` : vocabulaire fermé déjà appliqué par le validateur | Oui |
+| **Structure** | `type`, `additionalProperties: false`, identifiant non vide | Oui |
+| **Prérequis de consommation** | identifiant par lequel un builder sélectionne une occurrence | Oui |
+| **Présentation** | libellés traduits, accords, mise en forme DOCX | Non |
+
+- **Domaine** — une règle existe déjà et est attestée. Le schéma la reprend, il
+  ne l'invente pas.
+- **Structure** — la forme du contrat l'exige, indépendamment du métier. Un
+  identifiant vide n'a aucune sémantique : il ne permet ni référence, ni
+  résolution, ni unicité, ni diagnostic utile. Ces contraintes peuvent être
+  posées même quand l'implémentation ne les vérifie pas encore.
+- **Prérequis de consommation** — le moteur ne peut pas travailler sans. Un
+  composant répétable est instancié par identifiant : une occurrence qui n'en
+  porte pas est silencieusement absente du document. Ce n'est ni une règle
+  métier ni une préférence, c'est un contrat de consommation déjà réel, et il
+  peut être exigé même si le validateur ne le vérifie pas encore.
+- **Présentation** — une couche aval qui *sait exploiter* une valeur n'atteste
+  rien. Le renderer traduit `high` en « Élevé » par connaissance éditoriale ;
+  cela ne ferme pas pour autant le vocabulaire du champ concerné.
+
+Cette dernière ligne explique une asymétrie assumée : `severity` et `priority`
+portent un `enum`, `level` non — le validateur ferme les deux premiers
+vocabulaires, aucun ne ferme le troisième.
 
 ## Conséquences
 
