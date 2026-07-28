@@ -20,6 +20,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - narrative :: incident-context
   - narrative-investigation
   - narrative :: probable-cause
+  - narrative :: conclusion
 """
 from __future__ import annotations
 
@@ -211,6 +212,20 @@ def _build_probable_cause(data: dict[str, Any], instance_id: str) -> dict[str, A
         "statement": _paragraphs(source.get("statement")),
         "confidence": source.get("confidence"),
         "supporting_finding_ids": tuple(supporting) if isinstance(supporting, list) else (),
+    }
+
+
+def _build_conclusion(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Conclusion : texte final du rapport, normalisé en paragraphes.
+
+    La source est strictement une chaîne ; toute autre forme ne produit aucun
+    contenu, plutôt qu'une interprétation. Aucun champ dérivé, aucune
+    transformation éditoriale du texte.
+    """
+    raw = data.get("conclusion")
+    return {
+        "heading": "Conclusion",
+        "text": _paragraphs(raw) if isinstance(raw, str) else (),
     }
 
 
@@ -416,6 +431,7 @@ _BUILDERS: dict[BuilderKey, Builder] = _registry(
         ("narrative", "incident-context", _build_incident_context),
         ("narrative-investigation", None, _build_investigation),
         ("narrative", "probable-cause", _build_probable_cause),
+        ("narrative", "conclusion", _build_conclusion),
     )
 )
 

@@ -685,20 +685,62 @@ def test_probable_cause_absent_produces_no_instance():
     assert not any("cardinalité non respectée: narrative" in d for d in doc.diagnostics)
 
 
-def test_remaining_narrative_blocks_stay_diagnosed():
-    # Seule la conclusion reste sans builder à ce stade.
+def _conclusion(doc) -> ComponentInstance:
+    return next(c for c in doc.components if c.instance_id == "conclusion")
+
+
+def test_conclusion_is_composed_from_the_source_string():
+    payload = _conclusion(compose_document(_data())).payload
+    assert payload["heading"] == "Conclusion"
+    assert payload["text"] == (_data()["conclusion"],)  # texte non transformé
+
+
+def test_conclusion_payload_has_no_derived_field():
+    # Ni identifiant, ni champ dérivé : le bloc ne porte que son titre et son
+    # texte, donc rien d'autre ne peut atteindre le document.
+    payload = _conclusion(compose_document(_data())).payload
+    assert set(payload) == {"heading", "text"}
+
+
+def test_conclusion_splits_paragraphs():
+    data = _data()
+    data["conclusion"] = "Premier paragraphe.\n\n  Second paragraphe.  "
+    payload = _conclusion(compose_document(data)).payload
+    assert payload["text"] == ("Premier paragraphe.", "Second paragraphe.")
+
+
+def test_conclusion_ignores_a_non_string_source():
+    data = _data()
+    data["conclusion"] = {"texte": "structure inattendue"}
+    # L'occurrence est résolue (la clé existe) mais rien n'est interprété.
+    assert _conclusion(compose_document(data)).payload["text"] == ()
+
+
+def test_conclusion_absent_or_empty_produces_no_instance():
+    for value in (None, ""):
+        data = _data()
+        if value is None:
+            data.pop("conclusion")
+        else:
+            data["conclusion"] = value
+        doc = compose_document(data)
+        assert not any(c.instance_id == "conclusion" for c in doc.components)
+        # Le profil la déclare obligatoire : l'écart est tracé, rien n'est fabriqué.
+        assert any("cardinalité non respectée: narrative" in d for d in doc.diagnostics)
+
+
+def test_reference_report_composes_without_diagnostics():
+    # Objectif du chantier : plus aucun bloc non pris en charge sur la source
+    # de référence, et donc aucun diagnostic du tout.
     doc = compose_document(_data())
-    assert any("narrative :: conclusion" in d for d in doc.diagnostics)
-    assert not any("narrative :: incident-context" in d for d in doc.diagnostics)
-    assert not any("narrative :: probable-cause" in d for d in doc.diagnostics)
+    assert doc.diagnostics == ()
 
 
 def test_unsupported_components_are_reported_not_crashed():
     # À ce stade, C-001 à C-004, C-008 et C-009 ont un builder : les autres
     # composants résolus doivent produire un diagnostic, jamais une exception.
     doc = compose_document(_data())
-    assert any("builder manquant: narrative :: conclusion" in d for d in doc.diagnostics)
-    assert not any("builder manquant: narrative :: probable-cause" in d for d in doc.diagnostics)
+    assert not any(d.startswith("builder manquant") for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
@@ -712,6 +754,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-007-decision",
         "C-005-recommendation",
         "C-006-risk",
+        "narrative",  # conclusion
         "C-010-evidence",
     ]
 

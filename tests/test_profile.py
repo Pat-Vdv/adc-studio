@@ -186,8 +186,8 @@ def test_unknown_block_is_diagnosed_not_silently_dropped(tmp_path):
     assert any("source d'occurrences inconnue: C-404-inconnu" in d for d in composed.diagnostics)
 
 
-def test_unsupported_narrative_blocks_stay_diagnosed():
+def test_narrative_blocks_are_all_supported():
     composed = compose_document(_data())
-    assert any("narrative :: conclusion" in d for d in composed.diagnostics)
-    assert not any("narrative :: probable-cause" in d for d in composed.diagnostics)
-    assert not any("narrative-investigation" in d for d in composed.diagnostics)
+    narratives = [c.instance_id for c in composed.components if c.component_id == "narrative"]
+    assert narratives == ["incident-context", "probable-cause", "conclusion"]
+    assert not any("narrative" in d for d in composed.diagnostics)

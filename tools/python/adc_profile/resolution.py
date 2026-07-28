@@ -31,7 +31,7 @@ _SINGLE_OCCURRENCE_SOURCES: dict[str, str | None] = {
     "environment": None,
     "timeline": "timeline",
     "probable-cause": "probable_cause",
-    "conclusion": None,
+    "conclusion": "conclusion",
 }
 
 # Bloc répétable -> collection source qui porte ses occurrences.

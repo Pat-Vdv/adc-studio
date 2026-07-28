@@ -85,7 +85,20 @@ def test_named_block_never_falls_back_to_another_named_block(monkeypatch):
     assert compose._builder_for("narrative", "probable-cause") is None
 
 
-def test_missing_builder_is_still_diagnosed():
+def test_missing_builder_is_still_diagnosed(monkeypatch):
+    # Tous les blocs du rapport de référence ont désormais un builder : on
+    # vérifie le diagnostic en retirant celui d'un bloc nommé.
+    monkeypatch.setattr(
+        compose,
+        "_BUILDERS",
+        compose._registry(
+            tuple(
+                (component_id, instance_id, builder)
+                for (component_id, instance_id), builder in compose._BUILDERS.items()
+                if (component_id, instance_id) != ("narrative", "conclusion")
+            )
+        ),
+    )
     doc = compose_document(_data())
     assert any("builder manquant: narrative :: conclusion" in d for d in doc.diagnostics)
 

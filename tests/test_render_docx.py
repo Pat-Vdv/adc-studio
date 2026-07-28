@@ -371,6 +371,34 @@ def test_probable_cause_absent_renders_no_section(tmp_path):
     assert "Constat — Blocage observé pendant DBCC CHECKDB" in paragraphs  # reste intact
 
 
+def _headings(path: Path, level: str) -> list[str]:
+    """Titres du document au niveau demandé, dans l'ordre du document."""
+    return [p.text for p in DocxDocument(str(path)).paragraphs if p.style.name == level]
+
+
+def test_conclusion_is_rendered_as_its_own_section(tmp_path):
+    data = _data()
+    data["conclusion"] = "Conclusion finale.\n\nSeconde partie."
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    # Titre de niveau 1, distinct du volet « Conclusion » du résumé exécutif,
+    # qui est un sous-titre de niveau 2.
+    assert "Conclusion" in _headings(out, "Heading 1")
+    assert "Conclusion" in _headings(out, "Heading 2")
+    assert "Conclusion finale." in paragraphs
+    assert "Seconde partie." in paragraphs
+
+
+def test_conclusion_absent_renders_no_section(tmp_path):
+    data = _data()
+    data.pop("conclusion")
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    assert "Conclusion" not in _headings(out, "Heading 1")
+    assert "Preuve — État et configuration de l’environnement SQL" in [
+        p.text for p in DocxDocument(str(out)).paragraphs
+    ]  # le reste du rapport est intact
+
+
 def test_finding_is_rendered_as_its_own_section(tmp_path):
     data = _data()
     data["findings"][0]["observation"] = "Symptôme attesté.\n\nSecond paragraphe."
