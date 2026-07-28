@@ -1,4 +1,23 @@
 {
-  "component_id":"",
-  "component_version":"1.0"
+  "server_name": "SRV-SQL-01",
+  "operating_system": "Windows Server 2012 R2",
+  "database_engine": "Microsoft SQL Server 2014 Standard",
+  "database_engine_version": "12.0.x",
+  "instance": "APPPROD",
+  "primary_database": "APPPROD_DB",
+  "collation": "French_CI_AS",
+  "cpu_logical_count": 40,
+  "memory_gb": 64,
+  "storage": [
+    {
+      "volume": "C:",
+      "role": "Système",
+      "allocation_unit_kb": null
+    },
+    {
+      "volume": "D:",
+      "role": "SQL",
+      "allocation_unit_kb": 64
+    }
+  ]
 }

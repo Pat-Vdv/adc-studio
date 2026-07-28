@@ -142,18 +142,20 @@ def _summary_errors(fragment) -> tuple[str, ...]:
     )
 
 
-def test_executive_summary_of_the_reference_report_is_valid():
-    """Le durcissement ne doit pas invalider la source de référence."""
-    source = json.loads(
-        (
-            adc_contracts.ROOT
-            / "reference_reports"
-            / "incident_report"
-            / "data"
-            / "sql_server_2014_incident.json"
-        ).read_text(encoding="utf-8-sig")
+def _reference_source() -> dict:
+    """Source du rapport de référence : aucun durcissement ne doit l'invalider."""
+    path = (
+        adc_contracts.ROOT
+        / "reference_reports"
+        / "incident_report"
+        / "data"
+        / "sql_server_2014_incident.json"
     )
-    assert _summary_errors(source["executive_summary"]) == ()
+    return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def test_executive_summary_of_the_reference_report_is_valid():
+    assert _summary_errors(_reference_source()["executive_summary"]) == ()
 
 
 @pytest.mark.parametrize("field", _SUMMARY_FIELDS)
@@ -191,6 +193,78 @@ def test_executive_summary_example_covers_every_field():
     # le contrat entier, pas un sous-ensemble commode.
     example = adc_contracts.load_json(adc_contracts.example_path(C_003))
     assert set(example) == set(_SUMMARY_FIELDS)
+
+
+# --- C-009 Environment -----------------------------------------------------
+
+C_009 = "C-009-environment"
+
+
+def _environment_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_009), component=C_009
+    )
+
+
+def test_environment_of_the_reference_report_is_valid():
+    assert _environment_errors(_reference_source()["environment"]) == ()
+
+
+def test_environment_accepts_a_partial_fragment():
+    # Aucun champ requis : la composition tolère l'absence, le schéma aussi.
+    assert _environment_errors({"server_name": "SRV-01"}) == ()
+    assert _environment_errors({}) == ()
+
+
+def test_environment_rejects_a_fractional_cpu_count():
+    # Un décompte de processeurs logiques est entier par nature.
+    errors = _environment_errors({"cpu_logical_count": 40.5})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_009}: $.cpu_logical_count: ")
+
+
+def test_environment_accepts_a_fractional_memory():
+    # Quantité et non décompte : aucune règle n'impose un entier.
+    assert _environment_errors({"memory_gb": 62.5}) == ()
+
+
+def test_environment_rejects_an_unknown_field():
+    errors = _environment_errors({"server_name": "SRV-01", "virtualisation": "VMware"})
+    assert len(errors) == 1
+    assert "virtualisation" in errors[0]
+
+
+def test_storage_accepts_an_unmeasured_allocation_unit():
+    fragment = {"storage": [{"volume": "C:", "role": "Système", "allocation_unit_kb": None}]}
+    assert _environment_errors(fragment) == ()
+
+
+def test_storage_rejects_a_textual_allocation_unit():
+    fragment = {"storage": [{"volume": "D:", "role": "SQL", "allocation_unit_kb": "64"}]}
+    errors = _environment_errors(fragment)
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_009}: $.storage[0].allocation_unit_kb: ")
+
+
+def test_storage_rejects_an_unknown_field_inside_a_volume():
+    fragment = {"storage": [{"volume": "D:", "taille_go": 500}]}
+    errors = _environment_errors(fragment)
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_009}: $.storage[0]: ")
+
+
+def test_storage_rejects_a_non_object_entry():
+    errors = _environment_errors({"storage": ["D:"]})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_009}: $.storage[0]: ")
+
+
+def test_environment_example_covers_the_whole_contract():
+    example = adc_contracts.load_json(adc_contracts.example_path(C_009))
+    schema = adc_contracts.load_schema(C_009)
+    assert set(example) == set(schema["properties"])
+    volume_fields = schema["properties"]["storage"]["items"]["properties"]
+    assert all(set(volume) == set(volume_fields) for volume in example["storage"])
 
 
 def test_components_without_contract_are_exactly_the_declared_ones():
