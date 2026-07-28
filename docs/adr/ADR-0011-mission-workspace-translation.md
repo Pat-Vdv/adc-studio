@@ -47,7 +47,7 @@ Contrats de composants      ADR-0010
 > **exclusivement dans le pont**. Ni le contrat, ni le moteur n'en connaissent
 > l'existence.
 
-Cinq règles en découlent.
+Six règles en découlent.
 
 **R1 — Aucun alias dans le contrat pour satisfaire un atelier.**
 Un contrat ne gagne pas une clé parce qu'un outil amont la nomme autrement. Le contrat
@@ -83,6 +83,28 @@ le document produit est le seul artefact durable.
 Écrire toujours la source ne serait donc pas une commodité, mais un changement
 d'architecture.
 
+**R6 — Les métadonnées du contrat sont produites par le pont.**
+Les champs qui décrivent le **format** du document contractuel — `schema_version`
+aujourd'hui, une révision ou un nom de contrat demain — ne viennent d'aucun vocabulaire
+d'atelier. Le pont les pose, parce qu'ils caractérisent ce qu'il produit, non ce qu'il
+traduit.
+
+Ce n'est pas une normalisation au sens de R3, qui ne gouverne que les **données
+métier**. Le pont ne déclare pas « le rapport est en version 1.0 » ; il déclare « la
+structure que je viens de construire est conforme au contrat 1.0 ». Confondre les deux
+ferait de R3 une interdiction de tout ce qui relève du protocole d'échange.
+
+L'enveloppe est produite, le contenu est traduit :
+
+| | Origine | Règle |
+|---|---|---|
+| `report.title` | l'atelier | traduit (R3) |
+| `schema_version` | le pont | produit (R6) |
+
+Corollaire : toute source contractuelle porte les mêmes métadonnées, quelle que soit son
+origine. Le validateur n'a pas à connaître d'exception « sauf quand la source vient d'un
+pont » — une asymétrie qui le compliquerait sans rien garantir de plus.
+
 ## Portée
 
 Cette ADR ne décrit pas un pont particulier, mais le rapport entre **tout** espace de
@@ -99,7 +121,8 @@ Deviennent interdits, sans révision de cette ADR :
 
 - ajouter à un `schema.json` une clé issue d'un vocabulaire d'atelier ;
 - faire lire `metadata.yml`, ou tout autre artefact d'atelier, par le moteur ;
-- déduire, compléter ou reformater une valeur pendant la traduction ;
+- déduire, compléter ou reformater une **donnée métier** pendant la traduction ;
+- traiter une métadonnée de contrat comme une donnée métier, ou l'inverse ;
 - écrire une propriété vide plutôt que de l'omettre ;
 - faire de la source contractuelle un artefact écrit par défaut, ou la donner à
   éditer à un humain.
