@@ -304,6 +304,73 @@ def test_investigations_absent_render_no_section(tmp_path):
     assert "Constat — Blocage observé pendant DBCC CHECKDB" in paragraphs  # reste intact
 
 
+def test_probable_cause_is_rendered_as_its_own_section(tmp_path):
+    data = _data()
+    data["probable_cause"]["statement"] = "Hypothèse principale.\n\nSeconde partie."
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Cause probable" in paragraphs
+    assert "Hypothèse principale." in paragraphs
+    assert "Seconde partie." in paragraphs
+    assert "Constats à l'appui : Blocage observé pendant DBCC CHECKDB" in paragraphs
+
+
+def test_probable_cause_confidence_is_french_in_the_docx_only(tmp_path):
+    document = compose_document(_data())
+    cause = next(c for c in document.components if c.instance_id == "probable-cause")
+    text = _texts(render_docx(document, tmp_path / "report.docx"))
+    assert cause.payload["confidence"] == "unknown"  # IR canonique
+    # L'absence de certitude est une information : la ligne reste affichée.
+    assert "Confiance : Indéterminée" in text
+    assert "unknown" not in text
+
+
+def test_probable_cause_unmapped_confidence_is_rendered_verbatim(tmp_path):
+    data = _data()
+    data["probable_cause"]["confidence"] = "corroborated"
+    text = _texts(render_docx(compose_document(data), tmp_path / "report.docx"))
+    assert "Confiance : corroborated" in text
+
+
+def test_probable_cause_renders_titles_in_source_order_with_duplicates(tmp_path):
+    data = _data()
+    data["findings"].append(
+        {
+            "id": "finding-002",
+            "title": "Second constat",
+            "severity": "low",
+            "observation": "…",
+            "impact": "…",
+            "analysis": "…",
+            "evidence_ids": [],
+        }
+    )
+    data["probable_cause"]["supporting_finding_ids"] = ["finding-002", "finding-001", "finding-002"]
+    text = _texts(render_docx(compose_document(data), tmp_path / "report.docx"))
+    assert (
+        "Constats à l'appui : Second constat ; Blocage observé pendant DBCC CHECKDB ; Second constat"
+        in text
+    )
+
+
+def test_probable_cause_unknown_reference_is_not_displayed(tmp_path):
+    data = _data()
+    data["probable_cause"]["supporting_finding_ids"] = ["finding-404"]
+    text = _texts(render_docx(compose_document(data), tmp_path / "report.docx"))
+    assert "Cause probable" in text
+    assert "finding-404" not in text
+    assert "Constats à l'appui" not in text
+
+
+def test_probable_cause_absent_renders_no_section(tmp_path):
+    data = _data()
+    data.pop("probable_cause")
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Cause probable" not in paragraphs
+    assert "Constat — Blocage observé pendant DBCC CHECKDB" in paragraphs  # reste intact
+
+
 def test_finding_is_rendered_as_its_own_section(tmp_path):
     data = _data()
     data["findings"][0]["observation"] = "Symptôme attesté.\n\nSecond paragraphe."

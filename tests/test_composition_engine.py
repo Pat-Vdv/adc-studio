@@ -510,12 +510,6 @@ def test_evidence_payload_carries_no_referencing_component_data():
     assert not any("Blocage observé" in str(v) for v in payload.values())
 
 
-def test_narrative_probable_cause_stays_diagnosed():
-    # Comme incident-context : bloc narratif, hors catalogue, non traité ici.
-    doc = compose_document(_data())
-    assert any("narrative :: probable-cause" in d for d in doc.diagnostics)
-
-
 def _incident_context(doc) -> ComponentInstance:
     return next(c for c in doc.components if c.instance_id == "incident-context")
 
@@ -619,11 +613,84 @@ def test_investigations_absent_or_empty_produce_no_instance():
     assert not any("narrative-investigation" in d for d in doc.diagnostics)
 
 
+def _probable_cause(doc) -> ComponentInstance:
+    return next(c for c in doc.components if c.instance_id == "probable-cause")
+
+
+def test_probable_cause_is_composed():
+    payload = _probable_cause(compose_document(_data())).payload
+    source = _data()["probable_cause"]
+    assert payload["statement"] == (source["statement"],)
+    assert payload["supporting_finding_ids"] == ("finding-001",)
+
+
+def test_probable_cause_confidence_stays_canonical_in_the_ir():
+    payload = _probable_cause(compose_document(_data())).payload
+    assert payload["confidence"] == "unknown"
+    assert "Indéterminée" not in str(payload)
+
+
+def test_probable_cause_keeps_reference_order_and_duplicates():
+    data = _data()
+    data["findings"].append(
+        {
+            "id": "finding-002",
+            "title": "Second constat",
+            "severity": "low",
+            "observation": "…",
+            "impact": "…",
+            "analysis": "…",
+            "evidence_ids": [],
+        }
+    )
+    # Ordre inverse de la déclaration des constats, et un doublon assumé.
+    data["probable_cause"]["supporting_finding_ids"] = [
+        "finding-002",
+        "finding-001",
+        "finding-002",
+    ]
+    payload = _probable_cause(compose_document(data)).payload
+    assert payload["supporting_finding_ids"] == ("finding-002", "finding-001", "finding-002")
+
+
+def test_probable_cause_tolerates_missing_fields():
+    data = _data()
+    data["probable_cause"] = {"statement": "Énoncé seul."}
+    payload = _probable_cause(compose_document(data)).payload
+    assert payload["statement"] == ("Énoncé seul.",)
+    assert payload["confidence"] is None
+    assert payload["supporting_finding_ids"] == ()
+
+
+def test_probable_cause_unknown_reference_is_diagnosed():
+    data = _data()
+    data["probable_cause"]["supporting_finding_ids"] = ["finding-001", "finding-404"]
+    doc = compose_document(data)
+    assert _probable_cause(doc).payload["supporting_finding_ids"] == (
+        "finding-001",
+        "finding-404",
+    )  # l'IR conserve la référence déclarée
+    assert any(
+        "référence non résolue: narrative :: probable-cause -> finding-404" in d
+        for d in doc.diagnostics
+    )
+
+
+def test_probable_cause_absent_produces_no_instance():
+    data = _data()
+    data.pop("probable_cause")
+    doc = compose_document(data)
+    assert not any(c.instance_id == "probable-cause" for c in doc.components)
+    # Cardinalité 0..1 : aucune anomalie.
+    assert not any("cardinalité non respectée: narrative" in d for d in doc.diagnostics)
+
+
 def test_remaining_narrative_blocks_stay_diagnosed():
-    # Les blocs narratifs non encore pris en charge restent diagnostiqués.
+    # Seule la conclusion reste sans builder à ce stade.
     doc = compose_document(_data())
     assert any("narrative :: conclusion" in d for d in doc.diagnostics)
     assert not any("narrative :: incident-context" in d for d in doc.diagnostics)
+    assert not any("narrative :: probable-cause" in d for d in doc.diagnostics)
 
 
 def test_unsupported_components_are_reported_not_crashed():
@@ -631,7 +698,7 @@ def test_unsupported_components_are_reported_not_crashed():
     # composants résolus doivent produire un diagnostic, jamais une exception.
     doc = compose_document(_data())
     assert any("builder manquant: narrative :: conclusion" in d for d in doc.diagnostics)
-    assert not any("builder manquant: narrative-investigation" in d for d in doc.diagnostics)
+    assert not any("builder manquant: narrative :: probable-cause" in d for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
@@ -641,6 +708,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-008-timeline",
         "narrative-investigation",
         "C-004-finding",
+        "narrative",  # probable-cause
         "C-007-decision",
         "C-005-recommendation",
         "C-006-risk",

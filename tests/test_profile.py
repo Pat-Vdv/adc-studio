@@ -188,6 +188,6 @@ def test_unknown_block_is_diagnosed_not_silently_dropped(tmp_path):
 
 def test_unsupported_narrative_blocks_stay_diagnosed():
     composed = compose_document(_data())
-    for instance_id in ("probable-cause", "conclusion"):
-        assert any(f"narrative :: {instance_id}" in d for d in composed.diagnostics)
+    assert any("narrative :: conclusion" in d for d in composed.diagnostics)
+    assert not any("narrative :: probable-cause" in d for d in composed.diagnostics)
     assert not any("narrative-investigation" in d for d in composed.diagnostics)

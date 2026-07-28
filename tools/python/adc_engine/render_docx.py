@@ -15,6 +15,7 @@ substitution). Développement incrémental — composants rendus :
   - C-010-evidence
   - narrative :: incident-context
   - narrative-investigation
+  - narrative :: probable-cause
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -66,12 +67,17 @@ _INCIDENT_STATUS_LABELS: dict[str, str] = {
     "investigated": "Investigé",
 }
 
+_CONFIDENCE_LABELS: dict[str, str] = {
+    "unknown": "Indéterminée",
+}
+
 # Champ de présentation -> vocabulaire accordé au substantif correspondant.
 _ENUM_VOCABULARIES: dict[str, dict[str, str]] = {
     "severity": _ENUM_LABELS_FEMININE,  # Gravité
     "priority": _ENUM_LABELS_FEMININE,  # Priorité
     "risk_level": _ENUM_LABELS_MASCULINE,  # Niveau
     "incident_status": _INCIDENT_STATUS_LABELS,  # Statut du contexte d'incident
+    "confidence": _CONFIDENCE_LABELS,  # Confiance de la cause probable
 }
 
 
@@ -427,6 +433,24 @@ def _render_investigation(docx: Any, instance: ComponentInstance, context: dict[
         docx.add_paragraph(str(block))
 
 
+def _render_probable_cause(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
+    payload = instance.payload
+
+    # Section autonome du corps, sans titre de partie commun.
+    docx.add_heading(payload.get("heading") or "Cause probable", level=1)
+
+    # Une confiance déclarée est une information documentaire : la ligne est
+    # affichée même quand la source dit ne pas savoir.
+    _add_label_value(docx, "Confiance", _enum_label(payload.get("confidence"), "confidence"))
+
+    for block in payload.get("statement") or ():
+        docx.add_paragraph(str(block))
+
+    labels = _reference_labels(payload.get("supporting_finding_ids"), context, "finding_titles")
+    if labels:
+        _add_label_value(docx, "Constats à l'appui", " ; ".join(labels))
+
+
 def _registry(
     entries: tuple[tuple[str, str | None, Renderer], ...]
 ) -> dict[RendererKey, Renderer]:
@@ -456,6 +480,7 @@ _RENDERERS: dict[RendererKey, Renderer] = _registry(
         ("C-010-evidence", None, _render_evidence),
         ("narrative", "incident-context", _render_incident_context),
         ("narrative-investigation", None, _render_investigation),
+        ("narrative", "probable-cause", _render_probable_cause),
     )
 )
 

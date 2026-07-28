@@ -19,6 +19,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-010-evidence
   - narrative :: incident-context
   - narrative-investigation
+  - narrative :: probable-cause
 """
 from __future__ import annotations
 
@@ -194,6 +195,25 @@ def _build_incident_context(data: dict[str, Any], instance_id: str) -> dict[str,
     }
 
 
+def _build_probable_cause(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Cause probable : énoncé, niveau de confiance, constats à l'appui.
+
+    Les constats restent des identifiants, dans l'ordre exact de la source et
+    sans déduplication : une référence répétée est une information de la
+    source, pas un défaut à corriger ici.
+    """
+    source = data.get("probable_cause", {})
+    if not isinstance(source, dict):
+        source = {}
+    supporting = source.get("supporting_finding_ids")
+    return {
+        "heading": "Cause probable",
+        "statement": _paragraphs(source.get("statement")),
+        "confidence": source.get("confidence"),
+        "supporting_finding_ids": tuple(supporting) if isinstance(supporting, list) else (),
+    }
+
+
 def _entry_by_id(raw: Any, instance_id: str) -> dict[str, Any]:
     """Entrée source d'un composant répétable, retrouvée par son identifiant.
 
@@ -344,6 +364,7 @@ _REFERENCE_INDEXES: dict[str, str] = {
     "evidence_ids": "evidence_titles",
     "related_finding_ids": "finding_titles",
     "mitigation_recommendation_ids": "recommendation_titles",
+    "supporting_finding_ids": "finding_titles",
 }
 
 
@@ -394,6 +415,7 @@ _BUILDERS: dict[BuilderKey, Builder] = _registry(
         ("C-010-evidence", None, _build_evidence),
         ("narrative", "incident-context", _build_incident_context),
         ("narrative-investigation", None, _build_investigation),
+        ("narrative", "probable-cause", _build_probable_cause),
     )
 )
 
