@@ -1,4 +1,10 @@
 {
-  "component_id":"",
-  "component_version":"1.0"
+  "id": "recommendation-001",
+  "title": "Exécuter DBCC CHECKDB hors production",
+  "priority": "high",
+  "description": "Exécuter le contrôle d'intégrité sur une restauration récente, sur une instance distincte de la production.",
+  "rationale": "Réduire l'exposition de la production aux charges lourdes de contrôle d'intégrité, sans renoncer à la vérification régulière des bases.",
+  "related_finding_ids": [
+    "finding-001"
+  ]
 }

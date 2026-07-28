@@ -432,6 +432,96 @@ def test_finding_example_covers_the_whole_contract():
     assert set(_valid_finding()) == set(schema["properties"])
 
 
+# --- C-005 Recommendation --------------------------------------------------
+
+C_005 = "C-005-recommendation"
+_RECOMMENDATION_REQUIRED = (
+    "id",
+    "title",
+    "priority",
+    "description",
+    "rationale",
+    "related_finding_ids",
+)
+
+
+def _recommendation_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_005), component=C_005
+    )
+
+
+def _valid_recommendation() -> dict:
+    return adc_contracts.load_json(adc_contracts.example_path(C_005))
+
+
+def test_recommendation_of_the_reference_report_is_valid():
+    for recommendation in _reference_source()["recommendations"]:
+        assert _recommendation_errors(recommendation) == ()
+
+
+@pytest.mark.parametrize("field", _RECOMMENDATION_REQUIRED)
+def test_recommendation_requires_every_field_the_validator_requires(field):
+    fragment = {k: v for k, v in _valid_recommendation().items() if k != field}
+    errors = _recommendation_errors(fragment)
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_005}: $: ")
+    assert f"'{field}'" in errors[0]
+
+
+@pytest.mark.parametrize("priority", ["low", "medium", "high", "critical"])
+def test_recommendation_accepts_the_canonical_vocabulary(priority):
+    assert _recommendation_errors(dict(_valid_recommendation(), priority=priority)) == ()
+
+
+@pytest.mark.parametrize("priority", ["urgent", "High", "élevée", 3, None])
+def test_recommendation_rejects_a_priority_outside_the_vocabulary(priority):
+    errors = _recommendation_errors(dict(_valid_recommendation(), priority=priority))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_005}: $.priority: ")
+
+
+def test_recommendation_accepts_an_empty_reference_list():
+    assert _recommendation_errors(dict(_valid_recommendation(), related_finding_ids=[])) == ()
+
+
+def test_recommendation_rejects_a_non_textual_reference():
+    fragment = dict(_valid_recommendation(), related_finding_ids=["finding-001", 42])
+    errors = _recommendation_errors(fragment)
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_005}: $.related_finding_ids[1]: ")
+
+
+def test_recommendation_rejects_an_empty_reference():
+    errors = _recommendation_errors(dict(_valid_recommendation(), related_finding_ids=[""]))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_005}: $.related_finding_ids[0]: ")
+
+
+def test_recommendation_says_nothing_about_reference_resolvability():
+    # Même partage que pour les preuves d'un constat : cible inexistante et
+    # doublon sont des formes valides ici, des écarts pour le validateur.
+    fragment = dict(_valid_recommendation(), related_finding_ids=["finding-404", "finding-404"])
+    assert _recommendation_errors(fragment) == ()
+
+
+def test_recommendation_rejects_an_unknown_field():
+    errors = _recommendation_errors(dict(_valid_recommendation(), echeance="2026-09-01"))
+    assert len(errors) == 1
+    assert "echeance" in errors[0]
+
+
+def test_recommendation_rejects_a_collection_instead_of_an_occurrence():
+    errors = _recommendation_errors([_valid_recommendation()])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_005}: $: ")
+
+
+def test_recommendation_example_covers_the_whole_contract():
+    schema = adc_contracts.load_schema(C_005)
+    assert set(_valid_recommendation()) == set(schema["properties"])
+
+
 def test_components_without_contract_are_exactly_the_declared_ones():
     """Suivi explicite des trous restants, plutôt qu'un silence.
 

@@ -1,5 +1,46 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-005 Recommendation — fragment source",
+  "description": "Forme d'une occurrence de la collection `recommendations`. Le composant est répétable : la collection, l'unicité des identifiants et la résolubilité des références relèvent du noeud parent et du validateur.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "priority",
+    "description",
+    "rationale",
+    "related_finding_ids"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant de la recommandation, stable dans le document."
+    },
+    "title": {
+      "type": "string",
+      "description": "Intitulé de la recommandation."
+    },
+    "priority": {
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Priorité, dans le vocabulaire canonique du domaine. Son libellé de lecture relève du rendu."
+    },
+    "description": {
+      "type": "string",
+      "description": "Ce qu'il convient de faire."
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Pourquoi cette recommandation est formulée."
+    },
+    "related_finding_ids": {
+      "type": "array",
+      "description": "Constats traités, désignés par identifiant. Leur existence est vérifiée par le validateur, pas ici.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
 }
