@@ -35,24 +35,40 @@ from .model import ComponentInstance, Document
 Renderer = Callable[[Any, ComponentInstance, dict[str, Any]], None]
 
 
-# Libellés de présentation des énumérations partagées par plusieurs composants
-# (gravité d'un constat, priorité d'une recommandation). Le modèle conserve les
-# valeurs canoniques anglaises : la traduction n'existe que dans cette couche.
-_ENUM_LABELS: dict[str, str] = {
+# Libellés de présentation des énumérations partagées par plusieurs composants.
+# La valeur canonique est commune (low/medium/high/critical), mais son accord
+# dépend du substantif affiché : « Gravité : Élevée » et « Niveau : Élevé ».
+# Le modèle conserve l'anglais : la traduction n'existe que dans cette couche.
+_ENUM_LABELS_FEMININE: dict[str, str] = {
     "low": "Faible",
     "medium": "Moyenne",
     "high": "Élevée",
     "critical": "Critique",
 }
 
+_ENUM_LABELS_MASCULINE: dict[str, str] = {
+    "low": "Faible",
+    "medium": "Moyen",
+    "high": "Élevé",
+    "critical": "Critique",
+}
 
-def _enum_label(value: Any) -> Any:
-    """Libellé lisible d'une valeur d'énumération partagée.
+# Champ de présentation -> vocabulaire accordé au substantif correspondant.
+_ENUM_VOCABULARIES: dict[str, dict[str, str]] = {
+    "severity": _ENUM_LABELS_FEMININE,  # Gravité
+    "priority": _ENUM_LABELS_FEMININE,  # Priorité
+    "risk_level": _ENUM_LABELS_MASCULINE,  # Niveau
+}
 
-    Une valeur hors vocabulaire est restituée telle quelle : mieux vaut afficher
-    la valeur canonique de la source qu'inventer une traduction.
+
+def _enum_label(value: Any, field: str) -> Any:
+    """Libellé lisible d'une valeur d'énumération, accordé au champ affiché.
+
+    Valeur ou champ hors vocabulaire : la valeur canonique de la source est
+    restituée telle quelle, plutôt qu'une traduction inventée.
     """
-    return _ENUM_LABELS.get(value, value) if isinstance(value, str) else value
+    labels = _ENUM_VOCABULARIES.get(field, {})
+    return labels.get(value, value) if isinstance(value, str) else value
 
 
 def _add_label_value(docx: Any, label: str, value: Any) -> None:
@@ -262,7 +278,7 @@ def _render_finding(docx: Any, instance: ComponentInstance, context: dict[str, A
     title = payload.get("title")
     docx.add_heading(f"Constat — {title}" if title else "Constat", level=1)
 
-    _add_label_value(docx, "Gravité", _enum_label(payload.get("severity")))
+    _add_label_value(docx, "Gravité", _enum_label(payload.get("severity"), "severity"))
 
     for key, heading in _FINDING_SECTIONS:
         blocks = payload.get(key) or ()
@@ -306,7 +322,7 @@ def _render_recommendation(docx: Any, instance: ComponentInstance, context: dict
     title = payload.get("title")
     docx.add_heading(f"Recommandation — {title}" if title else "Recommandation", level=1)
 
-    _add_label_value(docx, "Priorité", _enum_label(payload.get("priority")))
+    _add_label_value(docx, "Priorité", _enum_label(payload.get("priority"), "priority"))
 
     for key, heading in _RECOMMENDATION_SECTIONS:
         blocks = payload.get(key) or ()
@@ -329,7 +345,7 @@ def _render_risk(docx: Any, instance: ComponentInstance, context: dict[str, Any]
     title = payload.get("title")
     docx.add_heading(f"Risque — {title}" if title else "Risque", level=1)
 
-    _add_label_value(docx, "Niveau", _enum_label(payload.get("level")))
+    _add_label_value(docx, "Niveau", _enum_label(payload.get("level"), "risk_level"))
 
     for block in payload.get("description") or ():
         docx.add_paragraph(str(block))

@@ -331,6 +331,28 @@ def test_enumerations_are_english_in_the_ir_and_french_in_the_docx(tmp_path):
     assert "medium" not in text
 
 
+def test_enumeration_labels_agree_with_their_field(tmp_path):
+    # Même valeur canonique, accord différent selon le substantif affiché.
+    data = _data()
+    data["findings"][0]["severity"] = "high"
+    data["recommendations"][0]["priority"] = "medium"
+    data["risks"][0]["level"] = "high"
+    text = _texts(render_docx(compose_document(data), tmp_path / "report.docx"))
+    assert "Gravité : Élevée" in text
+    assert "Priorité : Moyenne" in text
+    assert "Niveau : Élevé" in text
+    assert "Niveau : Élevée" not in text
+
+
+def test_masculine_vocabulary_covers_every_level(tmp_path):
+    expected = {"low": "Faible", "medium": "Moyen", "high": "Élevé", "critical": "Critique"}
+    for value, label in expected.items():
+        data = _data()
+        data["risks"][0]["level"] = value
+        text = _texts(render_docx(compose_document(data), tmp_path / f"report-{value}.docx"))
+        assert f"Niveau : {label}" in text
+
+
 def test_unknown_enumeration_value_is_rendered_verbatim(tmp_path):
     # Hors vocabulaire : on restitue la valeur de la source plutôt que
     # d'inventer une traduction.
@@ -368,7 +390,7 @@ def test_risk_is_rendered_as_its_own_section(tmp_path):
     out = render_docx(document, tmp_path / "report.docx")
     paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
     assert "Risque — Nouvelle indisponibilité lors d’un contrôle lourd en production" in paragraphs
-    assert "Niveau : Élevée" in paragraphs  # libellé français, IR en anglais
+    assert "Niveau : Élevé" in paragraphs  # accordé au substantif, IR en anglais
     assert "Risque résiduel." in paragraphs
     assert "Seconde partie." in paragraphs
     assert "Risques" not in paragraphs  # aucun titre de partie commun
