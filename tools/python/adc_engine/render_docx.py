@@ -12,6 +12,7 @@ substitution). Développement incrémental — composants rendus :
   - C-007-decision
   - C-005-recommendation
   - C-006-risk
+  - C-010-evidence
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -357,6 +358,33 @@ def _render_risk(docx: Any, instance: ComponentInstance, context: dict[str, Any]
         _add_label_value(docx, "Traitement prévu", " ; ".join(labels))
 
 
+_EVIDENCE_SECTIONS: tuple[tuple[str, str], ...] = (
+    ("description", "Description"),
+    ("content", "Contenu"),
+)
+
+
+def _render_evidence(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
+    payload = instance.payload
+
+    # Section autonome, dans l'ordre de la source : aucun titre de partie
+    # commun, aucune interprétation ajoutée à la preuve.
+    title = payload.get("title")
+    docx.add_heading(f"Preuve — {title}" if title else "Preuve", level=1)
+
+    # Valeurs déclarées par la source, ni traduites ni déduites.
+    _add_label_value(docx, "Nature", payload.get("kind"))
+    _add_label_value(docx, "Origine", payload.get("source"))
+
+    for key, heading in _EVIDENCE_SECTIONS:
+        blocks = payload.get(key) or ()
+        if not blocks:
+            continue  # volet non renseigné : pas de titre orphelin
+        docx.add_heading(heading, level=2)
+        for block in blocks:
+            docx.add_paragraph(str(block))
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
     "C-002-identity-page": _render_identity_page,
@@ -367,6 +395,7 @@ _RENDERERS: dict[str, Renderer] = {
     "C-007-decision": _render_decision,
     "C-005-recommendation": _render_recommendation,
     "C-006-risk": _render_risk,
+    "C-010-evidence": _render_evidence,
 }
 
 

@@ -438,6 +438,53 @@ def test_unresolved_reference_is_diagnosed_not_crashed():
     assert not any("recommendation-001" in d for d in doc.diagnostics)
 
 
+def _evidence(doc) -> list[ComponentInstance]:
+    return [c for c in doc.components if c.component_id == "C-010-evidence"]
+
+
+def test_evidence_instance_matches_its_source_entry():
+    data = _data()
+    data["evidence"].append(
+        {
+            "id": "evidence-002",
+            "title": "Seconde preuve",
+            "kind": "log_extract",
+            "description": "Description de la seconde preuve.",
+            "content": "Extrait de journal.",
+            "source": "Instance APPPROD",
+        }
+    )
+    items = _evidence(compose_document(data))
+    assert [e.instance_id for e in items] == ["evidence-001", "evidence-002"]
+    first = items[0].payload
+    source = data["evidence"][0]
+    assert first["id"] == source["id"]
+    assert first["title"] == source["title"]
+    assert first["kind"] == source["kind"]  # nature déclarée, jamais déduite
+    assert first["source"] == source["source"]
+    assert first["description"] == (source["description"],)
+    assert first["content"] == (source["content"],)
+    assert items[1].payload["kind"] == "log_extract"
+
+
+def test_evidence_tolerates_missing_fields():
+    data = _data()
+    data["evidence"] = [{"id": "evidence-001", "title": "Preuve sans détail"}]
+    payload = _evidence(compose_document(data))[0].payload
+    assert payload["kind"] is None
+    assert payload["source"] is None
+    assert payload["description"] == ()
+    assert payload["content"] == ()
+
+
+def test_evidence_payload_carries_no_referencing_component_data():
+    # La preuve ne connaît pas les constats qui la citent : la liaison est
+    # portée par le constat, dans un seul sens.
+    payload = _evidence(compose_document(_data()))[0].payload
+    assert "finding_ids" not in payload
+    assert not any("Blocage observé" in str(v) for v in payload.values())
+
+
 def test_narrative_probable_cause_stays_diagnosed():
     # Comme incident-context : bloc narratif, hors catalogue, non traité ici.
     doc = compose_document(_data())
@@ -455,8 +502,8 @@ def test_unsupported_components_are_reported_not_crashed():
     # À ce stade, C-001 à C-004, C-008 et C-009 ont un builder : les autres
     # composants résolus doivent produire un diagnostic, jamais une exception.
     doc = compose_document(_data())
-    assert any("C-010-evidence" in d for d in doc.diagnostics)
-    assert not any("builder manquant: C-006-risk" in d for d in doc.diagnostics)
+    assert any("narrative-investigation :: investigation-001" in d for d in doc.diagnostics)
+    assert not any("builder manquant: C-010-evidence" in d for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
@@ -467,6 +514,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-007-decision",
         "C-005-recommendation",
         "C-006-risk",
+        "C-010-evidence",
     ]
 
 

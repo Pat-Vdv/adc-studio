@@ -15,6 +15,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-007-decision
   - C-005-recommendation
   - C-006-risk
+  - C-010-evidence
 """
 from __future__ import annotations
 
@@ -239,6 +240,23 @@ def _build_risk(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
+def _build_evidence(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Preuve : l'occurrence de `evidence` portant `instance_id`.
+
+    Nature, origine et contenu sont repris tels que déclarés : rien n'est
+    déduit, et la preuve n'emporte aucune interprétation.
+    """
+    source = _entry_by_id(data.get("evidence"), instance_id)
+    return {
+        "id": source.get("id"),
+        "title": source.get("title"),
+        "kind": source.get("kind"),
+        "source": source.get("source"),
+        "description": _paragraphs(source.get("description")),
+        "content": _paragraphs(source.get("content")),
+    }
+
+
 def _titles_by_id(raw: Any) -> dict[str, str]:
     """Index identifiant -> titre d'une collection source, pour la présentation."""
     index: dict[str, str] = {}
@@ -298,6 +316,7 @@ _BUILDERS: dict[str, Builder] = {
     "C-007-decision": _build_decision,
     "C-005-recommendation": _build_recommendation,
     "C-006-risk": _build_risk,
+    "C-010-evidence": _build_evidence,
 }
 
 

@@ -439,6 +439,58 @@ def test_risks_are_rendered_in_source_order(tmp_path):
     assert first < second
 
 
+def test_evidence_is_rendered_as_its_own_section(tmp_path):
+    data = _data()
+    data["evidence"][0]["content"] = "Première partie.\n\nSeconde partie."
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Preuve — État et configuration de l’environnement SQL" in paragraphs
+    assert "Nature : technical_observation" in paragraphs  # valeur déclarée
+    assert "Origine : Serveur SRV-SQL-01" in paragraphs
+    assert "Contenu" in paragraphs
+    assert "Première partie." in paragraphs
+    assert "Seconde partie." in paragraphs
+    assert "Preuves" not in paragraphs  # aucun titre de partie commun
+
+
+def test_evidence_omits_absent_blocks(tmp_path):
+    data = _data()
+    data["evidence"] = [{"id": "evidence-001", "title": "Preuve sans détail"}]
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Preuve — Preuve sans détail" in paragraphs
+    assert not any(p.startswith("Nature") or p.startswith("Origine") for p in paragraphs)
+    assert "Contenu" not in paragraphs
+
+
+def test_evidence_is_rendered_in_source_order(tmp_path):
+    data = _data()
+    data["evidence"].append(
+        {
+            "id": "evidence-002",
+            "title": "Seconde preuve",
+            "kind": "log_extract",
+            "description": "Description.",
+            "content": "Extrait.",
+            "source": "Instance APPPROD",
+        }
+    )
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    first = paragraphs.index("Preuve — État et configuration de l’environnement SQL")
+    second = paragraphs.index("Preuve — Seconde preuve")
+    assert first < second
+
+
+def test_evidence_section_does_not_leak_identifiers(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    assert "evidence-001" not in _texts(out)
+
+
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):
     document = compose_document(_data())
     # Injecte une instance sans renderer : le rendu ne doit ni planter ni la rendre.
