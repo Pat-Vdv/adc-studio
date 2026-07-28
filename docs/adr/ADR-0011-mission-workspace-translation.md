@@ -47,7 +47,7 @@ Contrats de composants      ADR-0010
 > **exclusivement dans le pont**. Ni le contrat, ni le moteur n'en connaissent
 > l'existence.
 
-Quatre règles en découlent.
+Cinq règles en découlent.
 
 **R1 — Aucun alias dans le contrat pour satisfaire un atelier.**
 Un contrat ne gagne pas une clé parce qu'un outil amont la nomme autrement. Le contrat
