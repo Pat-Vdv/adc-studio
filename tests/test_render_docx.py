@@ -252,6 +252,46 @@ def test_findings_are_rendered_independently(tmp_path):
     assert "Constats" not in paragraphs
 
 
+def test_decision_is_rendered_as_its_own_section(tmp_path):
+    data = _data()
+    data["actions_taken"][0]["description"] = "Première partie.\n\nSeconde partie."
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Mesure prise — Sécurisation préalable par sauvegarde" in paragraphs
+    assert "Statut : completed" in paragraphs  # valeur canonique, non traduite
+    assert "Première partie." in paragraphs
+    assert "Seconde partie." in paragraphs
+
+
+def test_decision_omits_absent_blocks(tmp_path):
+    data = _data()
+    data["actions_taken"] = [{"id": "decision-001", "title": "Mesure sans détail"}]
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Mesure prise — Mesure sans détail" in paragraphs
+    assert not any(p.startswith("Statut") for p in paragraphs)
+
+
+def test_decisions_are_rendered_independently(tmp_path):
+    data = _data()
+    data["actions_taken"].append(
+        {
+            "id": "decision-002",
+            "title": "Seconde mesure",
+            "description": "Description de la seconde mesure.",
+            "status": "in_progress",
+        }
+    )
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Mesure prise — Sécurisation préalable par sauvegarde" in paragraphs
+    assert "Mesure prise — Seconde mesure" in paragraphs
+    assert "Mesures prises" not in paragraphs  # aucun titre de partie commun
+
+
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):
     document = compose_document(_data())
     # Injecte une instance sans renderer : le rendu ne doit ni planter ni la rendre.

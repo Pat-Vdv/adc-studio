@@ -9,6 +9,7 @@ substitution). Développement incrémental — composants rendus :
   - C-009-environment
   - C-008-timeline
   - C-004-finding
+  - C-007-decision
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -254,6 +255,21 @@ def _render_finding(docx: Any, instance: ComponentInstance, context: dict[str, A
         _add_label_value(docx, "Preuves", " ; ".join(labels))
 
 
+def _render_decision(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
+    payload = instance.payload
+
+    # Section autonome, comme le constat : renderer sans état, pas de titre de
+    # partie commun aux occurrences.
+    title = payload.get("title")
+    docx.add_heading(f"Mesure prise — {title}" if title else "Mesure prise", level=1)
+
+    # Valeur canonique de la source (« completed », …) : aucune traduction ici.
+    _add_label_value(docx, "Statut", payload.get("status"))
+
+    for block in payload.get("description") or ():
+        docx.add_paragraph(str(block))
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
     "C-002-identity-page": _render_identity_page,
@@ -261,6 +277,7 @@ _RENDERERS: dict[str, Renderer] = {
     "C-009-environment": _render_environment,
     "C-008-timeline": _render_timeline,
     "C-004-finding": _render_finding,
+    "C-007-decision": _render_decision,
 }
 
 

@@ -251,6 +251,51 @@ def test_evidence_titles_are_exposed_as_render_context():
     assert "evidence_titles" not in doc.metadata
 
 
+def _decisions(doc) -> list[ComponentInstance]:
+    return [c for c in doc.components if c.component_id == "C-007-decision"]
+
+
+def test_decision_instance_matches_its_source_entry():
+    data = _data()
+    data["actions_taken"].append(
+        {
+            "id": "decision-002",
+            "title": "Seconde mesure",
+            "description": "Description de la seconde mesure.",
+            "status": "in_progress",
+        }
+    )
+    decisions = _decisions(compose_document(data))
+    assert [d.instance_id for d in decisions] == ["decision-001", "decision-002"]
+    first = decisions[0].payload
+    source = data["actions_taken"][0]
+    assert first["id"] == source["id"]
+    assert first["title"] == source["title"]
+    assert first["description"] == (source["description"],)
+    assert decisions[1].payload["status"] == "in_progress"
+
+
+def test_decision_status_is_kept_canonical():
+    # Valeur de la source, sans traduction ni statut déduit d'une date.
+    payload = _decisions(compose_document(_data()))[0].payload
+    assert payload["status"] == "completed"
+
+
+def test_decision_tolerates_missing_fields():
+    data = _data()
+    data["actions_taken"] = [{"id": "decision-001", "title": "Mesure sans détail"}]
+    payload = _decisions(compose_document(data))[0].payload
+    assert payload["title"] == "Mesure sans détail"
+    assert payload["status"] is None  # jamais déduit
+    assert payload["description"] == ()
+
+
+def test_narrative_probable_cause_stays_diagnosed():
+    # Comme incident-context : bloc narratif, hors catalogue, non traité ici.
+    doc = compose_document(_data())
+    assert any("narrative :: probable-cause" in d for d in doc.diagnostics)
+
+
 def test_narrative_incident_context_stays_diagnosed():
     # Le bloc narratif n'est pas un composant du catalogue : il reste un
     # diagnostic tant qu'aucun builder dédié n'est livré.
@@ -263,7 +308,7 @@ def test_unsupported_components_are_reported_not_crashed():
     # composants résolus doivent produire un diagnostic, jamais une exception.
     doc = compose_document(_data())
     assert any("C-005-recommendation" in d for d in doc.diagnostics)
-    assert not any("C-004-finding" in d for d in doc.diagnostics)
+    assert not any("C-007-decision" in d for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
@@ -271,6 +316,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-009-environment",
         "C-008-timeline",
         "C-004-finding",
+        "C-007-decision",
     ]
 
 

@@ -12,6 +12,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-009-environment
   - C-008-timeline
   - C-004-finding
+  - C-007-decision
 """
 from __future__ import annotations
 
@@ -150,17 +151,27 @@ def _build_timeline(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
+def _entry_by_id(raw: Any, instance_id: str) -> dict[str, Any]:
+    """Entrée source d'un composant répétable, retrouvée par son identifiant.
+
+    Introuvable, elle donne un dictionnaire vide : le builder produit alors un
+    payload aux champs vides plutôt qu'une exception.
+    """
+    if not isinstance(raw, list):
+        return {}
+    return next(
+        (item for item in raw if isinstance(item, dict) and item.get("id") == instance_id),
+        {},
+    )
+
+
 def _build_finding(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     """Constat : l'occurrence dont l'identifiant est `instance_id`.
 
     Le payload ne porte que les `evidence_ids` : les identifiants restent les
     clés de liaison internes du modèle, leur libellé lisible relève du rendu.
     """
-    findings = data.get("findings", [])
-    source = next(
-        (f for f in findings if isinstance(f, dict) and f.get("id") == instance_id),
-        {},
-    )
+    source = _entry_by_id(data.get("findings"), instance_id)
     evidence_ids = source.get("evidence_ids")
     return {
         "id": source.get("id"),
@@ -170,6 +181,21 @@ def _build_finding(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
         "impact": _paragraphs(source.get("impact")),
         "analysis": _paragraphs(source.get("analysis")),
         "evidence_ids": tuple(evidence_ids) if isinstance(evidence_ids, list) else (),
+    }
+
+
+def _build_decision(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Mesure prise : l'occurrence de `actions_taken` portant `instance_id`.
+
+    Le statut est repris tel quel, dans sa valeur canonique : ni traduit, ni
+    déduit d'une date ou d'un résultat.
+    """
+    source = _entry_by_id(data.get("actions_taken"), instance_id)
+    return {
+        "id": source.get("id"),
+        "title": source.get("title"),
+        "status": source.get("status"),
+        "description": _paragraphs(source.get("description")),
     }
 
 
@@ -194,6 +220,7 @@ _BUILDERS: dict[str, Builder] = {
     "C-009-environment": _build_environment,
     "C-008-timeline": _build_timeline,
     "C-004-finding": _build_finding,
+    "C-007-decision": _build_decision,
 }
 
 
