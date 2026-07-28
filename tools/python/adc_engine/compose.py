@@ -257,29 +257,31 @@ def _build_evidence(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
-def _titles_by_id(raw: Any) -> dict[str, str]:
-    """Index identifiant -> titre d'une collection source, pour la présentation."""
-    index: dict[str, str] = {}
-    if not isinstance(raw, list):
-        return index
-    for item in raw:
-        if isinstance(item, dict) and item.get("id") and item.get("title"):
-            index[item["id"]] = item["title"]
-    return index
+# Composant cible d'une référence -> index de libellés qu'il alimente.
+_TITLE_INDEXES: dict[str, str] = {
+    "C-010-evidence": "evidence_titles",
+    "C-004-finding": "finding_titles",
+    "C-005-recommendation": "recommendation_titles",
+}
 
 
-def _render_context(data: dict[str, Any]) -> dict[str, Any]:
+def _render_context(instances: list[ComponentInstance]) -> dict[str, Any]:
     """Index de présentation, au sens du contexte de rendu d'ADR-0008.
 
-    Le modèle relie par identifiant ; la présentation a besoin du libellé
-    correspondant sans que les composants porteurs de références aient à
-    dupliquer le texte de leur cible.
+    Les libellés sont dérivés des instances déjà composées, jamais relus dans
+    la source : la chaîne reste source -> composition -> IR -> contexte de
+    rendu -> DOCX, sans information parallèle extraite du JSON.
     """
-    return {
-        "evidence_titles": _titles_by_id(data.get("evidence")),
-        "finding_titles": _titles_by_id(data.get("findings")),
-        "recommendation_titles": _titles_by_id(data.get("recommendations")),
-    }
+    context: dict[str, Any] = {name: {} for name in _TITLE_INDEXES.values()}
+    for instance in instances:
+        index = _TITLE_INDEXES.get(instance.component_id)
+        if index is None:
+            continue
+        identifier = instance.payload.get("id")
+        title = instance.payload.get("title")
+        if identifier and title:
+            context[index][identifier] = title
+    return context
 
 
 # Champ de référence d'un payload -> index de libellés qui doit le résoudre.
@@ -327,19 +329,22 @@ def compose_document(data: dict[str, Any]) -> Document:
 
     instances: list[ComponentInstance] = []
     diagnostics: list[str] = []
-    context = _render_context(data)
 
     for component_id, instance_id in resolve(data):
         builder = _BUILDERS.get(component_id)
         if builder is None:
             diagnostics.append(f"builder manquant: {component_id} :: {instance_id}")
             continue
-        payload = builder(data, instance_id)
+        instances.append(ComponentInstance(component_id, instance_id, builder(data, instance_id)))
+
+    # Le contexte se déduit des instances : les références ne sont donc
+    # confrontées qu'à ce que l'IR contient réellement.
+    context = _render_context(instances)
+    for instance in instances:
         diagnostics += [
-            f"référence non résolue: {component_id} :: {instance_id} -> {ref}"
-            for ref in _unresolved_references(payload, context)
+            f"référence non résolue: {instance.component_id} :: {instance.instance_id} -> {ref}"
+            for ref in _unresolved_references(instance.payload, context)
         ]
-        instances.append(ComponentInstance(component_id, instance_id, payload))
 
     return Document(
         id=report.get("id", ""),

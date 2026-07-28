@@ -420,6 +420,25 @@ def test_recommendation_titles_are_exposed_as_render_context():
     }
 
 
+def test_render_context_is_derived_from_the_ir_instances():
+    # Invariant : les index de libellés reflètent ce que l'IR contient
+    # réellement, et non une lecture parallèle du JSON source.
+    doc = compose_document(_data())
+    context = doc.metadata["render_context"]
+    for component_id, index in (
+        ("C-004-finding", "finding_titles"),
+        ("C-005-recommendation", "recommendation_titles"),
+        ("C-010-evidence", "evidence_titles"),
+    ):
+        composed = {
+            c.payload["id"]: c.payload["title"]
+            for c in doc.components
+            if c.component_id == component_id
+        }
+        assert composed
+        assert context[index] == composed
+
+
 def test_unresolved_reference_is_diagnosed_not_crashed():
     # Référence sans libellé : elle ne peut pas être rendue (aucun identifiant
     # technique dans le document) et ne doit pas non plus disparaître en silence.
