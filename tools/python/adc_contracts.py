@@ -32,6 +32,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from adc_diagnostics import SCHEMA, ValidationDiagnostic
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -108,9 +109,9 @@ def load_schema(component_id: str) -> dict[str, Any]:
     return schema
 
 
-def validation_errors(
+def validation_diagnostics(
     fragment: Any, schema: dict[str, Any], *, component: str, at: str = ROOT_PATH
-) -> tuple[str, ...]:
+) -> tuple[ValidationDiagnostic, ...]:
     """Écarts d'un fragment au schéma, ordonnés et localisés.
 
     Chaque écart nomme le composant concerné et le chemin du champ fautif, de
@@ -119,24 +120,58 @@ def validation_errors(
     `at` préfixe ces chemins par la position du fragment dans la source : un
     écart signalé en `$.severity` lors d'une validation isolée devient
     `$.findings[1].severity` lors de la validation d'un rapport entier.
+
+    Le `code` est le mot-clé du schéma qui a rejeté la valeur — `type`, `enum`,
+    `required` — repris tel quel : le traduire inventerait un vocabulaire que
+    rien n'atteste.
     """
     validator = Draft202012Validator(schema)
     return tuple(
-        f"{component}: {at}{error.json_path[1:]}: {error.message}"
+        ValidationDiagnostic(
+            path=f"{at}{error.json_path[1:]}",
+            message=error.message,
+            source=SCHEMA,
+            component=component,
+            code=str(error.validator),
+        )
         for error in sorted(validator.iter_errors(fragment), key=lambda e: list(e.absolute_path))
     )
 
 
-def validate_fragment(component_id: str, fragment: Any, *, at: str = ROOT_PATH) -> tuple[str, ...]:
+def validation_errors(
+    fragment: Any, schema: dict[str, Any], *, component: str, at: str = ROOT_PATH
+) -> tuple[str, ...]:
+    """Rendu textuel de `validation_diagnostics`."""
+    return tuple(
+        str(diagnostic)
+        for diagnostic in validation_diagnostics(fragment, schema, component=component, at=at)
+    )
+
+
+def fragment_diagnostics(
+    component_id: str, fragment: Any, *, at: str = ROOT_PATH
+) -> tuple[ValidationDiagnostic, ...]:
     """Écarts d'un fragment au contrat de son composant."""
-    return validation_errors(
+    return validation_diagnostics(
         fragment, load_schema(component_id), component=component_id, at=at
     )
+
+
+def validate_fragment(component_id: str, fragment: Any, *, at: str = ROOT_PATH) -> tuple[str, ...]:
+    """Rendu textuel de `fragment_diagnostics`."""
+    return tuple(str(diagnostic) for diagnostic in fragment_diagnostics(component_id, fragment, at=at))
 
 
 def validate_report(
     data: Any, fragments: dict[str, tuple[str, str]] | None = None
 ) -> tuple[str, ...]:
+    """Rendu textuel de `report_diagnostics`."""
+    return tuple(str(diagnostic) for diagnostic in report_diagnostics(data, fragments))
+
+
+def report_diagnostics(
+    data: Any, fragments: dict[str, tuple[str, str]] | None = None
+) -> tuple[ValidationDiagnostic, ...]:
     """Écarts de forme d'une source entière, contrat par contrat.
 
     Chaque composant est confronté au fragment que la table lui désigne, et
@@ -157,7 +192,7 @@ def validate_report(
     """
     table = INCIDENT_REPORT_FRAGMENTS if fragments is None else fragments
     is_source = isinstance(data, dict)
-    errors: list[str] = []
+    diagnostics: list[ValidationDiagnostic] = []
 
     for component_id, (kind, path) in table.items():
         if kind != SOURCE and (not is_source or path not in data):
@@ -178,9 +213,9 @@ def validate_report(
             targets = ((data[path], f"{ROOT_PATH}.{path}"),)
 
         for fragment, at in targets:
-            errors += validation_errors(fragment, schema, component=component_id, at=at)
+            diagnostics += validation_diagnostics(fragment, schema, component=component_id, at=at)
 
-    return tuple(errors)
+    return tuple(diagnostics)
 
 
 def example_errors(component_id: str) -> tuple[str, ...]:

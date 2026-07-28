@@ -156,6 +156,51 @@ def test_an_empty_table_validates_nothing():
     assert adc_contracts.validate_report(_reference_source(), fragments={}) == ()
 
 
+# --- Support commun aux deux validations -----------------------------------
+
+
+def test_a_schema_diagnostic_names_its_contract_and_its_keyword():
+    source = _reference_source()
+    source["findings"][0]["severity"] = "urgent"
+    diagnostics = adc_contracts.report_diagnostics(source)
+    assert len(diagnostics) == 1
+    diagnostic = diagnostics[0]
+    assert (diagnostic.source, diagnostic.component) == ("schema", "C-004-finding")
+    assert diagnostic.path == "$.findings[0].severity"
+    # Le code est le mot-clé du schéma, repris tel quel : le traduire
+    # inventerait un vocabulaire que rien n'atteste.
+    assert diagnostic.code == "enum"
+
+
+@pytest.mark.parametrize(
+    "field,value,code",
+    [
+        ("severity", "urgent", "enum"),
+        ("title", 42, "type"),
+        ("evidence_ids", "evidence-001", "type"),
+        ("inconnu", "x", "additionalProperties"),
+    ],
+)
+def test_the_keyword_that_rejected_the_value_is_the_code(field, value, code):
+    source = _reference_source()
+    source["findings"][0][field] = value
+    assert [d.code for d in adc_contracts.report_diagnostics(source)] == [code]
+
+
+def test_a_missing_required_field_is_coded_required():
+    source = _reference_source()
+    del source["findings"][0]["title"]
+    assert [d.code for d in adc_contracts.report_diagnostics(source)] == ["required"]
+
+
+def test_the_textual_form_is_the_rendering_of_the_diagnostics():
+    source = _reference_source()
+    source["findings"][0]["severity"] = "urgent"
+    assert adc_contracts.validate_report(source) == tuple(
+        str(diagnostic) for diagnostic in adc_contracts.report_diagnostics(source)
+    )
+
+
 # --- Préfixe de localisation ----------------------------------------------
 
 

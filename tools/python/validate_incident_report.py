@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
 """Validation structurelle d'une source de rapport d'incident.
 
+`validate` ne porte que des règles **métier** : références, unicité, présence,
+vocabulaires. Elle ne redit pas ce que les contrats de composants disent de la
+forme, et reste appelable seule — aucune validation de forme n'est supposée
+l'avoir précédée, aucune entrée malformée ne la fait échouer.
+
+La ligne de commande, elle, enchaîne les deux : forme d'abord, métier ensuite,
+et présente les diagnostics ensemble sans les confondre. C'est ici, et non dans
+`validate`, que les deux validations se rencontrent.
+
 Le résumé `--summary` n'a pas d'ordre propre : il affiche la résolution du
-profil, seule description de l'ordre des blocs. Ce script ne dépend que du
-noyau neutre `adc_profile`, jamais du moteur de composition.
+profil, seule description de l'ordre des blocs. Ce script ne dépend que de
+modules neutres, jamais du moteur de composition.
 """
 from __future__ import annotations
 import argparse, json, sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import adc_contracts  # noqa: E402
+from adc_diagnostics import BUSINESS, ValidationDiagnostic  # noqa: E402
 from adc_profile import load_profile, resolve  # noqa: E402
 
 SEVERITIES={"low","medium","high","critical"}
@@ -20,13 +30,16 @@ PRIORITIES=SEVERITIES
 
 PROFILE_PATH = Path(__file__).resolve().parents[2] / "profiles" / "p-003-incident-report.yaml"
 
-@dataclass(frozen=True)
-class Issue:
-    path:str
-    message:str
-    def __str__(self): return f"{self.path}: {self.message}"
+# Vocabulaire des diagnostics métier. La forme a le sien — les mots-clés du
+# schéma — et les deux n'ont pas à se ressembler.
+MALFORMED="malformed"; MISSING="required_field_missing"; DUPLICATE="duplicate_id"
+UNKNOWN_REFERENCE="unknown_reference"; UNEXPECTED="unexpected_value"
 
-def entries(data:Any,name:str,issues:list[Issue])->list[tuple[int,dict]]:
+def issue(path:str,code:str,message:str)->ValidationDiagnostic:
+    """Diagnostic métier : la source est en cause, aucun contrat nommé ne l'est."""
+    return ValidationDiagnostic(path=path,message=message,source=BUSINESS,code=code)
+
+def entries(data:Any,name:str,issues:list[ValidationDiagnostic])->list[tuple[int,dict]]:
     """Occurrences exploitables d'une collection, les autres étant signalées.
 
     Le validateur ne redit pas ce que le schéma dit de la forme : il constate
@@ -36,14 +49,14 @@ def entries(data:Any,name:str,issues:list[Issue])->list[tuple[int,dict]]:
     raw=data.get(name)
     if raw is None: return []
     if not isinstance(raw,list):
-        issues.append(Issue(f"$.{name}","malformed: list expected")); return []
+        issues.append(issue(f"$.{name}",MALFORMED,"malformed: list expected")); return []
     usable=[]
     for i,item in enumerate(raw):
         if isinstance(item,dict): usable.append((i,item))
-        else: issues.append(Issue(f"$.{name}[{i}]","malformed: object expected"))
+        else: issues.append(issue(f"$.{name}[{i}]",MALFORMED,"malformed: object expected"))
     return usable
 
-def references(item:dict,field:str,path:str,issues:list[Issue])->list[tuple[int,str]]:
+def references(item:dict,field:str,path:str,issues:list[ValidationDiagnostic])->list[tuple[int,str]]:
     """Références exploitables d'un champ, les autres étant signalées.
 
     Une chaîne se parcourrait caractère par caractère et produirait autant de
@@ -54,20 +67,20 @@ def references(item:dict,field:str,path:str,issues:list[Issue])->list[tuple[int,
     raw=item.get(field)
     if raw is None: return []
     if not isinstance(raw,list):
-        issues.append(Issue(f"{path}.{field}","malformed: list expected")); return []
+        issues.append(issue(f"{path}.{field}",MALFORMED,"malformed: list expected")); return []
     usable=[]
     for j,ref in enumerate(raw):
         if isinstance(ref,str): usable.append((j,ref))
-        else: issues.append(Issue(f"{path}.{field}[{j}]","malformed: string expected"))
+        else: issues.append(issue(f"{path}.{field}[{j}]",MALFORMED,"malformed: string expected"))
     return usable
 
-def validate(data:Any)->list[Issue]:
+def validate(data:Any)->list[ValidationDiagnostic]:
     issues=[]
-    if not isinstance(data,dict): return [Issue("$","malformed: object expected")]
+    if not isinstance(data,dict): return [issue("$",MALFORMED,"malformed: object expected")]
     required=("schema_version","report","client","executive_summary","incident_context","environment","findings","recommendations","evidence","conclusion")
     for key in required:
-        if key not in data: issues.append(Issue(f"$.{key}","required field missing"))
-    if data.get("schema_version")!="1.0": issues.append(Issue("$.schema_version","expected '1.0'"))
+        if key not in data: issues.append(issue(f"$.{key}",MISSING,"required field missing"))
+    if data.get("schema_version")!="1.0": issues.append(issue("$.schema_version",UNEXPECTED,"expected '1.0'"))
     # Chaque collection n'est lue qu'une fois : une entrée mal formée doit être
     # signalée une fois, pas une fois par règle qui l'aurait parcourue.
     findings=entries(data,"findings",issues)
@@ -81,28 +94,28 @@ def validate(data:Any)->list[Issue]:
             # Un identifiant non textuel n'entre pas dans un index : non
             # hachable, il ferait lever l'appartenance à l'ensemble.
             if raw is not None and not isinstance(raw,str):
-                issues.append(Issue(f"$.{name}[{i}].id","malformed: string expected")); continue
+                issues.append(issue(f"$.{name}[{i}].id",MALFORMED,"malformed: string expected")); continue
             if not raw:
-                issues.append(Issue(f"$.{name}[{i}].id","required field missing")); continue
-            if item["id"] in seen: issues.append(Issue(f"$.{name}[{i}].id",f"duplicate id '{item['id']}'"))
+                issues.append(issue(f"$.{name}[{i}].id",MISSING,"required field missing")); continue
+            if item["id"] in seen: issues.append(issue(f"$.{name}[{i}].id",DUPLICATE,f"duplicate id '{item['id']}'"))
             seen.add(item["id"])
         return seen
     finding_ids=ids("findings",findings); recommendation_ids=ids("recommendations",recommendations); evidence_ids=ids("evidence",evidence)
     for i,item in findings:
         for field in ("id","title","severity","observation","impact","analysis","evidence_ids"):
-            if field not in item: issues.append(Issue(f"$.findings[{i}].{field}","required field missing"))
-        if item.get("severity") not in SEVERITIES: issues.append(Issue(f"$.findings[{i}].severity",f"expected one of {sorted(SEVERITIES)}"))
+            if field not in item: issues.append(issue(f"$.findings[{i}].{field}",MISSING,"required field missing"))
+        if item.get("severity") not in SEVERITIES: issues.append(issue(f"$.findings[{i}].severity",UNEXPECTED,f"expected one of {sorted(SEVERITIES)}"))
         for j,ref in references(item,"evidence_ids",f"$.findings[{i}]",issues):
-            if ref not in evidence_ids: issues.append(Issue(f"$.findings[{i}].evidence_ids[{j}]",f"unknown reference '{ref}'"))
+            if ref not in evidence_ids: issues.append(issue(f"$.findings[{i}].evidence_ids[{j}]",UNKNOWN_REFERENCE,f"unknown reference '{ref}'"))
     for i,item in recommendations:
         for field in ("id","title","priority","description","rationale","related_finding_ids"):
-            if field not in item: issues.append(Issue(f"$.recommendations[{i}].{field}","required field missing"))
-        if item.get("priority") not in PRIORITIES: issues.append(Issue(f"$.recommendations[{i}].priority",f"expected one of {sorted(PRIORITIES)}"))
+            if field not in item: issues.append(issue(f"$.recommendations[{i}].{field}",MISSING,"required field missing"))
+        if item.get("priority") not in PRIORITIES: issues.append(issue(f"$.recommendations[{i}].priority",UNEXPECTED,f"expected one of {sorted(PRIORITIES)}"))
         for j,ref in references(item,"related_finding_ids",f"$.recommendations[{i}]",issues):
-            if ref not in finding_ids: issues.append(Issue(f"$.recommendations[{i}].related_finding_ids[{j}]",f"unknown reference '{ref}'"))
+            if ref not in finding_ids: issues.append(issue(f"$.recommendations[{i}].related_finding_ids[{j}]",UNKNOWN_REFERENCE,f"unknown reference '{ref}'"))
     for i,item in risks:
         for j,ref in references(item,"mitigation_recommendation_ids",f"$.risks[{i}]",issues):
-            if ref not in recommendation_ids: issues.append(Issue(f"$.risks[{i}].mitigation_recommendation_ids[{j}]",f"unknown reference '{ref}'"))
+            if ref not in recommendation_ids: issues.append(issue(f"$.risks[{i}].mitigation_recommendation_ids[{j}]",UNKNOWN_REFERENCE,f"unknown reference '{ref}'"))
     return issues
 
 def summary_blocks(data:dict[str,Any])->tuple[tuple[str,str],...]:
@@ -114,10 +127,13 @@ def main():
     p=argparse.ArgumentParser(); p.add_argument("input",type=Path); p.add_argument("--summary",action="store_true"); a=p.parse_args()
     try: data=json.loads(a.input.read_text(encoding="utf-8-sig"))
     except Exception as exc: print(f"INVALID JSON: {exc}",file=sys.stderr); return 1
-    issues=validate(data)
-    if issues:
-        print(f"INVALID: {len(issues)} issue(s).",file=sys.stderr)
-        for issue in issues: print(f"- {issue}",file=sys.stderr)
+    # Forme d'abord, métier ensuite. Les deux sont rapportées d'un coup : la
+    # validation métier ne dépend pas de la première, un noeud illisible ne
+    # l'empêche pas de conclure sur le reste.
+    diagnostics=[*adc_contracts.report_diagnostics(data),*validate(data)]
+    if diagnostics:
+        print(f"INVALID: {len(diagnostics)} issue(s).",file=sys.stderr)
+        for diagnostic in diagnostics: print(f"- {diagnostic}",file=sys.stderr)
         return 1
     print("VALID: incident report source is structurally consistent.")
     if a.summary:

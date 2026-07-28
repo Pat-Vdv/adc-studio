@@ -129,8 +129,50 @@ def test_no_hostile_source_raises(source):
         assert isinstance(str(issue),str)
 
 
+
+# --- Support commun aux deux validations -----------------------------------
+
+def test_business_diagnostics_carry_their_source_and_code():
+    d=copy.deepcopy(data()); d["findings"][0]["evidence_ids"]=["missing"]
+    unresolved=[x for x in validator().validate(d) if x.code=="unknown_reference"]
+    assert len(unresolved)==1
+    assert unresolved[0].source=="business"
+    # Un écart métier porte sur la source, aucun contrat nommé n'est en cause.
+    assert unresolved[0].component is None
+    assert str(unresolved[0])=="$.findings[0].evidence_ids[0]: unknown reference 'missing'"
+
+def test_a_business_diagnostic_keeps_its_own_text():
+    # Le support est commun, les textes ne le sont pas : un diagnostic métier
+    # ne se met pas à ressembler à un diagnostic de schéma.
+    d=copy.deepcopy(data()); d["evidence"].append(copy.deepcopy(d["evidence"][0]))
+    duplicated=[x for x in validator().validate(d) if x.code=="duplicate_id"]
+    assert [str(x) for x in duplicated]==["$.evidence[1].id: duplicate id 'evidence-001'"]
+
+def test_the_command_line_runs_both_validations(tmp_path):
+    """La rencontre des deux validations a lieu ici, pas dans `validate`."""
+    d=copy.deepcopy(data())
+    d["findings"][0]["severity"]="urgent"                            # forme
+    d["recommendations"][0]["related_finding_ids"]=["finding-404"]   # métier
+    broken=tmp_path/"broken.json"; broken.write_text(json.dumps(d),encoding="utf-8")
+    result=subprocess.run([sys.executable,str(VPATH),str(broken)],capture_output=True,text=True)
+    assert result.returncode==1
+    assert "C-004-finding: $.findings[0].severity:" in result.stderr  # contrat de forme
+    assert "unknown reference 'finding-404'" in result.stderr         # règle métier
+
+def test_the_command_line_accepts_the_reference_source():
+    result=subprocess.run([sys.executable,str(VPATH),str(DPATH)],capture_output=True,text=True)
+    assert result.returncode==0, result.stderr
+
+
+# Modules que le validateur a le droit de charger. Tous neutres : ils ne
+# dépendent ni du moteur de composition, ni d'un format de sortie. La liste est
+# explicite plutôt que préfixée, de façon qu'un module nouveau soit un choix et
+# non un effet de bord.
+NEUTRAL_MODULES={"adc_profile","adc_profile.contract","adc_profile.resolution",
+                 "adc_contracts","adc_diagnostics"}
+
 def test_validator_does_not_depend_on_the_engine():
-    """Contrôle statique : le source ne mentionne que le noyau neutre."""
+    """Contrôle statique : le source ne mentionne que des modules neutres."""
     source=VPATH.read_text(encoding="utf-8")
     assert "adc_profile" in source
     assert "adc_engine" not in source
@@ -150,9 +192,9 @@ def test_validator_loads_no_engine_module():
     )
     result=subprocess.run([sys.executable,"-c",program],capture_output=True,text=True)
     assert result.returncode==0, result.stderr
-    loaded=result.stdout.split()
+    loaded=set(result.stdout.split())
     assert "adc_profile" in loaded  # le noyau neutre est bien chargé
-    assert [name for name in loaded if not name.startswith("adc_profile")]==[]
+    assert loaded<=NEUTRAL_MODULES, f"module non neutre chargé : {sorted(loaded-NEUTRAL_MODULES)}"
 
 def test_summary_is_deterministic():
     v=validator(); d=data(); assert v.summary_blocks(d)==v.summary_blocks(copy.deepcopy(d))
