@@ -672,6 +672,81 @@ def test_decision_example_covers_the_whole_contract():
     assert set(_valid_decision()) == set(schema["properties"])
 
 
+# --- C-010 Evidence --------------------------------------------------------
+
+C_010 = "C-010-evidence"
+
+
+def _evidence_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_010), component=C_010
+    )
+
+
+def _valid_evidence() -> dict:
+    return adc_contracts.load_json(adc_contracts.example_path(C_010))
+
+
+def test_evidence_of_the_reference_report_is_valid():
+    for evidence in _reference_source()["evidence"]:
+        assert _evidence_errors(evidence) == ()
+
+
+def test_evidence_requires_only_its_identifier():
+    # Ici l'identifiant est attesté deux fois : le validateur l'exige pour
+    # cette collection, et le moteur instancie l'occurrence par lui.
+    assert _evidence_errors({"id": "evidence-001"}) == ()
+    errors = _evidence_errors({k: v for k, v in _valid_evidence().items() if k != "id"})
+    assert len(errors) == 1
+    assert "'id'" in errors[0]
+
+
+def test_evidence_rejects_an_empty_identifier():
+    errors = _evidence_errors(dict(_valid_evidence(), id=""))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_010}: $.id: ")
+
+
+@pytest.mark.parametrize(
+    "kind", ["technical_observation", "log_extract", "capture d'écran", "témoignage"]
+)
+def test_evidence_kind_is_deliberately_not_a_closed_vocabulary(kind):
+    """Absence d'`enum` assumée, pas oubliée (ADR-0010).
+
+    La donnée de référence porte « technical_observation », mais rien ne
+    ferme la liste des natures de preuve.
+    """
+    assert _evidence_errors(dict(_valid_evidence(), kind=kind)) == ()
+
+
+@pytest.mark.parametrize("source", ["Serveur SRV-SQL-01", "annexe-A.pdf", "Entretien client"])
+def test_evidence_source_imposes_no_convention(source):
+    assert _evidence_errors(dict(_valid_evidence(), source=source)) == ()
+
+
+def test_evidence_rejects_an_empty_kind():
+    errors = _evidence_errors(dict(_valid_evidence(), kind=""))
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_010}: $.kind: ")
+
+
+def test_evidence_rejects_an_unknown_field():
+    errors = _evidence_errors(dict(_valid_evidence(), hash_sha256="…"))
+    assert len(errors) == 1
+    assert "hash_sha256" in errors[0]
+
+
+def test_evidence_rejects_a_collection_instead_of_an_occurrence():
+    errors = _evidence_errors([_valid_evidence()])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_010}: $: ")
+
+
+def test_evidence_example_covers_the_whole_contract():
+    schema = adc_contracts.load_schema(C_010)
+    assert set(_valid_evidence()) == set(schema["properties"])
+
+
 def test_components_without_contract_are_exactly_the_declared_ones():
     """Suivi explicite des trous restants, plutôt qu'un silence.
 

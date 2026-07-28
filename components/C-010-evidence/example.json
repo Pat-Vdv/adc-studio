@@ -1,4 +1,8 @@
 {
-  "component_id":"",
-  "component_version":"1.0"
+  "id": "evidence-001",
+  "title": "État et configuration de l'environnement SQL",
+  "kind": "technical_observation",
+  "source": "Serveur SRV-SQL-01",
+  "description": "Informations techniques collectées sur le serveur et l'instance pendant l'intervention.",
+  "content": "Relevé de configuration joint en annexe A, horodaté du 23 juillet 2026."
 }
