@@ -11,6 +11,7 @@ substitution). Développement incrémental — composants rendus :
   - C-004-finding
   - C-007-decision
   - C-005-recommendation
+  - C-006-risk
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -320,6 +321,26 @@ def _render_recommendation(docx: Any, instance: ComponentInstance, context: dict
         _add_label_value(docx, "Constats liés", " ; ".join(labels))
 
 
+def _render_risk(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
+    payload = instance.payload
+
+    # Section autonome, dans l'ordre de la source : ni tri, ni regroupement par
+    # niveau, ni titre de partie commun aux occurrences.
+    title = payload.get("title")
+    docx.add_heading(f"Risque — {title}" if title else "Risque", level=1)
+
+    _add_label_value(docx, "Niveau", _enum_label(payload.get("level")))
+
+    for block in payload.get("description") or ():
+        docx.add_paragraph(str(block))
+
+    labels = _reference_labels(
+        payload.get("mitigation_recommendation_ids"), context, "recommendation_titles"
+    )
+    if labels:
+        _add_label_value(docx, "Traitement prévu", " ; ".join(labels))
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
     "C-002-identity-page": _render_identity_page,
@@ -329,6 +350,7 @@ _RENDERERS: dict[str, Renderer] = {
     "C-004-finding": _render_finding,
     "C-007-decision": _render_decision,
     "C-005-recommendation": _render_recommendation,
+    "C-006-risk": _render_risk,
 }
 
 

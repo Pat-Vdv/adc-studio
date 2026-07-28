@@ -14,6 +14,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-004-finding
   - C-007-decision
   - C-005-recommendation
+  - C-006-risk
 """
 from __future__ import annotations
 
@@ -219,6 +220,25 @@ def _build_recommendation(data: dict[str, Any], instance_id: str) -> dict[str, A
     }
 
 
+def _build_risk(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Risque : l'occurrence de `risks` portant `instance_id`.
+
+    Le niveau garde sa valeur canonique anglaise et les traitements prévus
+    restent des identifiants de recommandations.
+    """
+    source = _entry_by_id(data.get("risks"), instance_id)
+    mitigations = source.get("mitigation_recommendation_ids")
+    return {
+        "id": source.get("id"),
+        "title": source.get("title"),
+        "level": source.get("level"),
+        "description": _paragraphs(source.get("description")),
+        "mitigation_recommendation_ids": (
+            tuple(mitigations) if isinstance(mitigations, list) else ()
+        ),
+    }
+
+
 def _titles_by_id(raw: Any) -> dict[str, str]:
     """Index identifiant -> titre d'une collection source, pour la présentation."""
     index: dict[str, str] = {}
@@ -240,7 +260,32 @@ def _render_context(data: dict[str, Any]) -> dict[str, Any]:
     return {
         "evidence_titles": _titles_by_id(data.get("evidence")),
         "finding_titles": _titles_by_id(data.get("findings")),
+        "recommendation_titles": _titles_by_id(data.get("recommendations")),
     }
+
+
+# Champ de référence d'un payload -> index de libellés qui doit le résoudre.
+_REFERENCE_INDEXES: dict[str, str] = {
+    "evidence_ids": "evidence_titles",
+    "related_finding_ids": "finding_titles",
+    "mitigation_recommendation_ids": "recommendation_titles",
+}
+
+
+def _unresolved_references(
+    payload: dict[str, Any], context: dict[str, Any]
+) -> tuple[str, ...]:
+    """Références dont aucun libellé n'est disponible pour la présentation.
+
+    Le renderer n'affichant jamais un identifiant technique, ces références
+    seraient invisibles dans le document : elles sortent donc en diagnostic
+    plutôt que d'être silencieusement perdues.
+    """
+    unresolved: list[str] = []
+    for field, index in _REFERENCE_INDEXES.items():
+        titles = context.get(index) or {}
+        unresolved += [ref for ref in payload.get(field) or () if ref not in titles]
+    return tuple(unresolved)
 
 
 _BUILDERS: dict[str, Builder] = {
@@ -252,6 +297,7 @@ _BUILDERS: dict[str, Builder] = {
     "C-004-finding": _build_finding,
     "C-007-decision": _build_decision,
     "C-005-recommendation": _build_recommendation,
+    "C-006-risk": _build_risk,
 }
 
 
@@ -262,6 +308,7 @@ def compose_document(data: dict[str, Any]) -> Document:
 
     instances: list[ComponentInstance] = []
     diagnostics: list[str] = []
+    context = _render_context(data)
 
     for component_id, instance_id in resolve(data):
         builder = _BUILDERS.get(component_id)
@@ -269,6 +316,10 @@ def compose_document(data: dict[str, Any]) -> Document:
             diagnostics.append(f"builder manquant: {component_id} :: {instance_id}")
             continue
         payload = builder(data, instance_id)
+        diagnostics += [
+            f"référence non résolue: {component_id} :: {instance_id} -> {ref}"
+            for ref in _unresolved_references(payload, context)
+        ]
         instances.append(ComponentInstance(component_id, instance_id, payload))
 
     return Document(
@@ -284,7 +335,7 @@ def compose_document(data: dict[str, Any]) -> Document:
             "language": report.get("language"),
             # Index techniques destinés au renderer, isolés des métadonnées
             # éditoriales du rapport (ADR-0008 : contexte nécessaire au rendu).
-            "render_context": _render_context(data),
+            "render_context": context,
         },
         components=tuple(instances),
         diagnostics=tuple(diagnostics),

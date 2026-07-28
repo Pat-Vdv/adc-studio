@@ -366,6 +366,78 @@ def test_finding_titles_are_exposed_as_render_context():
     }
 
 
+def _risks(doc) -> list[ComponentInstance]:
+    return [c for c in doc.components if c.component_id == "C-006-risk"]
+
+
+def test_risk_instance_matches_its_source_entry():
+    data = _data()
+    data["risks"].append(
+        {
+            "id": "risk-002",
+            "title": "Second risque",
+            "level": "critical",
+            "description": "Description du second risque.",
+            "mitigation_recommendation_ids": [],
+        }
+    )
+    risks = _risks(compose_document(data))
+    assert [r.instance_id for r in risks] == ["risk-001", "risk-002"]
+    first = risks[0].payload
+    source = data["risks"][0]
+    assert first["id"] == source["id"]
+    assert first["title"] == source["title"]
+    assert first["description"] == (source["description"],)
+    # Aucun tri : le risque « critical » déclaré en second y reste.
+    assert [r.payload["level"] for r in risks] == ["high", "critical"]
+
+
+def test_risk_level_stays_canonical_in_the_ir():
+    payload = _risks(compose_document(_data()))[0].payload
+    assert payload["level"] == "high"
+    assert "Élevée" not in str(payload)
+
+
+def test_risk_keeps_mitigation_ids_only():
+    payload = _risks(compose_document(_data()))[0].payload
+    assert payload["mitigation_recommendation_ids"] == ("recommendation-001",)
+    assert not any("Exécuter DBCC CHECKDB" in str(v) for v in payload.values())
+
+
+def test_risk_tolerates_missing_fields():
+    data = _data()
+    data["risks"] = [{"id": "risk-001", "title": "Risque sans détail"}]
+    payload = _risks(compose_document(data))[0].payload
+    assert payload["level"] is None  # jamais déduit
+    assert payload["description"] == ()
+    assert payload["mitigation_recommendation_ids"] == ()
+
+
+def test_recommendation_titles_are_exposed_as_render_context():
+    doc = compose_document(_data())
+    assert doc.metadata["render_context"]["recommendation_titles"] == {
+        "recommendation-001": "Exécuter DBCC CHECKDB hors production"
+    }
+
+
+def test_unresolved_reference_is_diagnosed_not_crashed():
+    # Référence sans libellé : elle ne peut pas être rendue (aucun identifiant
+    # technique dans le document) et ne doit pas non plus disparaître en silence.
+    data = _data()
+    data["risks"][0]["mitigation_recommendation_ids"] = ["recommendation-001", "recommendation-404"]
+    doc = compose_document(data)
+    payload = _risks(doc)[0].payload
+    assert payload["mitigation_recommendation_ids"] == (
+        "recommendation-001",
+        "recommendation-404",
+    )  # l'IR conserve la référence déclarée
+    assert any(
+        "référence non résolue: C-006-risk :: risk-001 -> recommendation-404" in d
+        for d in doc.diagnostics
+    )
+    assert not any("recommendation-001" in d for d in doc.diagnostics)
+
+
 def test_narrative_probable_cause_stays_diagnosed():
     # Comme incident-context : bloc narratif, hors catalogue, non traité ici.
     doc = compose_document(_data())
@@ -383,8 +455,8 @@ def test_unsupported_components_are_reported_not_crashed():
     # À ce stade, C-001 à C-004, C-008 et C-009 ont un builder : les autres
     # composants résolus doivent produire un diagnostic, jamais une exception.
     doc = compose_document(_data())
-    assert any("C-006-risk" in d for d in doc.diagnostics)
-    assert not any("C-005-recommendation" in d for d in doc.diagnostics)
+    assert any("C-010-evidence" in d for d in doc.diagnostics)
+    assert not any("builder manquant: C-006-risk" in d for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
@@ -394,6 +466,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-004-finding",
         "C-007-decision",
         "C-005-recommendation",
+        "C-006-risk",
     ]
 
 

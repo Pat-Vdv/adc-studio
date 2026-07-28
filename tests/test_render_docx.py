@@ -361,6 +361,62 @@ def test_recommendations_are_rendered_in_source_order(tmp_path):
     assert first < second  # aucun regroupement ni tri par priorité
 
 
+def test_risk_is_rendered_as_its_own_section(tmp_path):
+    data = _data()
+    data["risks"][0]["description"] = "Risque résiduel.\n\nSeconde partie."
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Risque — Nouvelle indisponibilité lors d’un contrôle lourd en production" in paragraphs
+    assert "Niveau : Élevée" in paragraphs  # libellé français, IR en anglais
+    assert "Risque résiduel." in paragraphs
+    assert "Seconde partie." in paragraphs
+    assert "Risques" not in paragraphs  # aucun titre de partie commun
+
+
+def test_risk_renders_recommendation_titles_never_ids(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    assert "Traitement prévu : Exécuter DBCC CHECKDB hors production" in text
+    assert "recommendation-001" not in text
+    assert "risk-001" not in text
+
+
+def test_risk_unknown_reference_is_not_displayed(tmp_path):
+    # Référence sans libellé : ni exception, ni identifiant technique dans le
+    # document, ni libellé inventé — elle sort en diagnostic côté composition.
+    data = _data()
+    data["risks"][0]["mitigation_recommendation_ids"] = ["recommendation-404"]
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    assert "Risque — Nouvelle indisponibilité lors d’un contrôle lourd en production" in text
+    assert "recommendation-404" not in text
+    assert "Traitement prévu" not in text
+
+
+def test_risks_are_rendered_in_source_order(tmp_path):
+    data = _data()
+    data["risks"].append(
+        {
+            "id": "risk-002",
+            "title": "Niveau critique déclaré en second",
+            "level": "critical",
+            "description": "Description.",
+            "mitigation_recommendation_ids": [],
+        }
+    )
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    first = paragraphs.index(
+        "Risque — Nouvelle indisponibilité lors d’un contrôle lourd en production"
+    )
+    second = paragraphs.index("Risque — Niveau critique déclaré en second")
+    assert first < second
+
+
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):
     document = compose_document(_data())
     # Injecte une instance sans renderer : le rendu ne doit ni planter ni la rendre.
