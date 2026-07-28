@@ -1,5 +1,5 @@
 from __future__ import annotations
-import copy, importlib.util, json, sys
+import copy, importlib.util, json, subprocess, sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 VPATH=ROOT/"tools"/"python"/"validate_incident_report.py"
@@ -20,10 +20,29 @@ def test_unknown_finding_is_rejected():
     d=copy.deepcopy(data()); d["recommendations"][0]["related_finding_ids"]=["missing"]
     assert any("unknown reference 'missing'" in str(x) for x in validator().validate(d))
 def test_validator_does_not_depend_on_the_engine():
-    """Dépendance commune limitée au noyau neutre : aucun cycle possible."""
+    """Contrôle statique : le source ne mentionne que le noyau neutre."""
     source=VPATH.read_text(encoding="utf-8")
     assert "adc_profile" in source
     assert "adc_engine" not in source
+
+def test_validator_loads_no_engine_module():
+    """Contrôle dynamique : aucun module du moteur chargé, fût-ce indirectement.
+
+    Le contrôle statique ne verrait pas un import de commodité ajouté dans une
+    dépendance du validateur ; celui-ci observe ce qui est réellement importé.
+    """
+    program=(
+        "import importlib.util,sys;"
+        f"sys.path.insert(0,{str(ROOT/'tools'/'python')!r});"
+        f"spec=importlib.util.spec_from_file_location('v',{str(VPATH)!r});"
+        "m=importlib.util.module_from_spec(spec);sys.modules['v']=m;spec.loader.exec_module(m);"
+        "print(' '.join(sorted(n for n in sys.modules if n.startswith('adc_'))))"
+    )
+    result=subprocess.run([sys.executable,"-c",program],capture_output=True,text=True)
+    assert result.returncode==0, result.stderr
+    loaded=result.stdout.split()
+    assert "adc_profile" in loaded  # le noyau neutre est bien chargé
+    assert [name for name in loaded if not name.startswith("adc_profile")]==[]
 
 def test_summary_is_deterministic():
     v=validator(); d=data(); assert v.summary_blocks(d)==v.summary_blocks(copy.deepcopy(d))
