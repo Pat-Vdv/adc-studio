@@ -4,6 +4,7 @@ Le renderer est **maître de la mise en page** : il construit le document
 directement depuis l'IR avec python-docx (aucun template rempli par
 substitution). Développement incrémental — composants rendus :
   - C-001-cover
+  - C-002-identity-page
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -66,8 +67,71 @@ def _render_cover(docx: Any, instance: ComponentInstance) -> None:
     _add_label_value(docx, "Confidentialité", payload.get("confidentiality"))
 
 
+_IDENTITY_LABELS: tuple[tuple[str, str], ...] = (
+    ("id", "Identifiant"),
+    ("reference", "Référence"),
+    ("title", "Titre"),
+    ("client", "Client"),
+    ("author", "Auteur"),
+    ("version", "Version"),
+    ("date", "Date"),
+    ("language", "Langue"),
+    ("confidentiality", "Confidentialité"),
+)
+
+_IDENTITY_TABLES: tuple[tuple[str, str, tuple[tuple[str, str], ...]], ...] = (
+    (
+        "revisions",
+        "Révisions",
+        (("version", "Version"), ("date", "Date"), ("author", "Auteur"), ("summary", "Objet")),
+    ),
+    ("validations", "Validations", (("role", "Rôle"), ("name", "Nom"), ("date", "Date"))),
+    (
+        "distribution",
+        "Diffusion",
+        (("name", "Nom"), ("organisation", "Organisation"), ("role", "Rôle")),
+    ),
+)
+
+
+def _add_table(docx: Any, columns: tuple[tuple[str, str], ...], rows: Any) -> None:
+    """Table à en-tête, une ligne par entrée ; rien si la liste est vide."""
+    if not rows:
+        return
+    table = docx.add_table(rows=1, cols=len(columns))
+    table.style = "Table Grid"
+    for cell, (_, header) in zip(table.rows[0].cells, columns):
+        cell.text = ""
+        cell.paragraphs[0].add_run(header).bold = True
+    for row in rows:
+        cells = table.add_row().cells
+        for cell, (key, _) in zip(cells, columns):
+            value = row.get(key)
+            cell.text = "" if value in (None, "") else str(value)
+
+
+def _render_identity_page(docx: Any, instance: ComponentInstance) -> None:
+    payload = instance.payload
+
+    # Composant pleine page : il démarre après la page de garde.
+    docx.add_page_break()
+    docx.add_heading(payload.get("heading") or "Identité du document", level=1)
+
+    identification = payload.get("identification") or {}
+    for key, label in _IDENTITY_LABELS:
+        _add_label_value(docx, label, identification.get(key))
+
+    for key, heading, columns in _IDENTITY_TABLES:
+        rows = payload.get(key) or ()
+        if not rows:
+            continue  # section absente de la source : pas de tableau vide
+        docx.add_heading(heading, level=2)
+        _add_table(docx, columns, rows)
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
+    "C-002-identity-page": _render_identity_page,
 }
 
 

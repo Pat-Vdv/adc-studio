@@ -7,6 +7,7 @@ composant résolu mais sans builder ne casse rien : il produit un diagnostic.
 
 Développement incrémental (cas SQL Server Incident) — composants pris en charge :
   - C-001-cover
+  - C-002-identity-page
 """
 from __future__ import annotations
 
@@ -17,6 +18,17 @@ from .resolve import resolve
 
 # Un builder reçoit (data_source, instance_id) et retourne le payload de rendu.
 Builder = Callable[[dict[str, Any], str], dict[str, Any]]
+
+
+def _rows(raw: Any, fields: tuple[str, ...]) -> tuple[dict[str, Any], ...]:
+    """Normalise une liste d'objets source en lignes aux champs connus.
+
+    Les entrées non conformes (non-dict) sont ignorées : le payload reste
+    homogène et le rendu n'a aucune vérification défensive à faire.
+    """
+    if not isinstance(raw, list):
+        return ()
+    return tuple({f: item.get(f) for f in fields} for item in raw if isinstance(item, dict))
 
 
 def _build_cover(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
@@ -35,8 +47,36 @@ def _build_cover(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
+def _build_identity_page(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Identité documentaire : métadonnées, révisions, validations, diffusion.
+
+    Les trois derniers blocs sont optionnels dans la source : absents, ils
+    produisent un tuple vide et la section correspondante n'est pas rendue.
+    """
+    report = data.get("report", {})
+    client = data.get("client", {})
+    return {
+        "heading": "Identité du document",
+        "identification": {
+            "id": report.get("id"),
+            "reference": report.get("reference"),
+            "title": report.get("title"),
+            "client": client.get("name"),
+            "author": report.get("author"),
+            "version": report.get("version"),
+            "date": report.get("date"),
+            "language": report.get("language"),
+            "confidentiality": report.get("confidentiality"),
+        },
+        "revisions": _rows(report.get("revisions"), ("version", "date", "author", "summary")),
+        "validations": _rows(report.get("validations"), ("role", "name", "date")),
+        "distribution": _rows(report.get("distribution"), ("name", "organisation", "role")),
+    }
+
+
 _BUILDERS: dict[str, Builder] = {
     "C-001-cover": _build_cover,
+    "C-002-identity-page": _build_identity_page,
 }
 
 

@@ -1,6 +1,7 @@
 """Tests du renderer DOCX (increment 2).
 
-Périmètre : rendu de la Cover (C-001-cover) uniquement, depuis le Document IR.
+Périmètre : rendu de la Cover (C-001-cover) et de l'identité documentaire
+(C-002-identity-page) depuis le Document IR.
 """
 from __future__ import annotations
 
@@ -45,6 +46,39 @@ def test_cover_texts_present(tmp_path):
     assert "2026-07-28" in text  # date
     assert "A.D.C. srl" in text  # auteur
     assert "ADC-MECA-2026-SQL2014-001" in text  # référence
+
+
+def test_identity_page_texts_present(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    assert "Identité du document" in text
+    assert "fr-BE" in text  # langue, propre à la page d'identité
+
+
+def test_identity_page_omits_empty_optional_tables(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    docx = DocxDocument(str(out))
+    assert "Révisions" not in text
+    assert "Diffusion" not in text
+    assert docx.tables == []
+
+
+def test_identity_page_renders_optional_tables(tmp_path):
+    data = _data()
+    data["report"]["revisions"] = [
+        {"version": "0.1-draft", "date": "2026-07-28", "author": "A.D.C. srl", "summary": "Création"}
+    ]
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    docx = DocxDocument(str(out))
+    assert "Révisions" in "\n".join(p.text for p in docx.paragraphs)
+    assert len(docx.tables) == 1
+    rows = [[c.text for c in row.cells] for row in docx.tables[0].rows]
+    assert rows[0] == ["Version", "Date", "Auteur", "Objet"]
+    assert rows[1] == ["0.1-draft", "2026-07-28", "A.D.C. srl", "Création"]
 
 
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):

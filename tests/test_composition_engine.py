@@ -37,13 +37,50 @@ def test_cover_is_first_and_populated():
     assert cover.payload["confidentiality"] == "Confidentiel"
 
 
-def test_unsupported_components_are_reported_not_crashed():
-    # À ce stade, seul C-001-cover a un builder : les autres composants résolus
-    # doivent produire un diagnostic, jamais une exception.
+def test_identity_page_follows_cover():
     doc = compose_document(_data())
-    assert any("C-002-identity-page" in d for d in doc.diagnostics)
-    # Un seul composant instancié pour l'instant (la Cover).
-    assert [c.component_id for c in doc.components] == ["C-001-cover"]
+    identity = doc.components[1]
+    assert identity.component_id == "C-002-identity-page"
+    assert identity.instance_id == "identity"
+    identification = identity.payload["identification"]
+    assert identification["id"] == "ADC-MECA-2026-SQL2014-001"
+    assert identification["client"] == "Soc01"
+    assert identification["language"] == "fr-BE"
+    assert identification["confidentiality"] == "Confidentiel"
+
+
+def test_identity_page_optional_blocks_are_empty_when_absent():
+    # La source de référence ne porte ni révisions, ni validations, ni diffusion :
+    # le payload reste homogène (tuples vides), sans clé manquante.
+    identity = compose_document(_data()).components[1]
+    assert identity.payload["revisions"] == ()
+    assert identity.payload["validations"] == ()
+    assert identity.payload["distribution"] == ()
+
+
+def test_identity_page_reads_optional_blocks_when_present():
+    data = _data()
+    data["report"]["revisions"] = [
+        {"version": "0.1-draft", "date": "2026-07-28", "author": "A.D.C. srl", "summary": "Création"},
+        "entrée invalide ignorée",
+    ]
+    data["report"]["validations"] = [{"role": "Auteur", "name": "A.D.C. srl", "date": "2026-07-28"}]
+    data["report"]["distribution"] = [{"name": "Soc01", "organisation": "Soc01", "role": "Client"}]
+    identity = compose_document(data).components[1]
+    assert identity.payload["revisions"] == (
+        {"version": "0.1-draft", "date": "2026-07-28", "author": "A.D.C. srl", "summary": "Création"},
+    )
+    assert identity.payload["validations"][0]["role"] == "Auteur"
+    assert identity.payload["distribution"][0]["name"] == "Soc01"
+
+
+def test_unsupported_components_are_reported_not_crashed():
+    # À ce stade, seuls C-001-cover et C-002-identity-page ont un builder : les
+    # autres composants résolus doivent produire un diagnostic, jamais une exception.
+    doc = compose_document(_data())
+    assert any("C-003-executive-summary" in d for d in doc.diagnostics)
+    assert not any("C-002-identity-page" in d for d in doc.diagnostics)
+    assert [c.component_id for c in doc.components] == ["C-001-cover", "C-002-identity-page"]
 
 
 def test_composition_matches_resolution_order():
