@@ -6,6 +6,7 @@ substitution). Développement incrémental — composants rendus :
   - C-001-cover
   - C-002-identity-page
   - C-003-executive-summary
+  - C-009-environment
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -154,10 +155,46 @@ def _render_executive_summary(docx: Any, instance: ComponentInstance) -> None:
             docx.add_paragraph(str(block))
 
 
+_ENVIRONMENT_LABELS: tuple[tuple[str, str], ...] = (
+    ("server_name", "Serveur"),
+    ("operating_system", "Système d'exploitation"),
+    ("database_engine", "Moteur de base de données"),
+    ("database_engine_version", "Version du moteur"),
+    ("instance", "Instance"),
+    ("primary_database", "Base principale"),
+    ("collation", "Collation"),
+    ("cpu_logical_count", "Processeurs logiques"),
+    ("memory_gb", "Mémoire (Go)"),
+)
+
+_STORAGE_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("volume", "Volume"),
+    ("role", "Rôle"),
+    ("allocation_unit_kb", "Unité d'allocation (Ko)"),
+)
+
+
+def _render_environment(docx: Any, instance: ComponentInstance) -> None:
+    payload = instance.payload
+
+    # Section courante du corps : pas de saut de page, elle suit le narratif.
+    docx.add_heading(payload.get("heading") or "Environnement", level=1)
+
+    system = payload.get("system") or {}
+    for key, label in _ENVIRONMENT_LABELS:
+        _add_label_value(docx, label, system.get(key))
+
+    storage = payload.get("storage") or ()
+    if storage:
+        docx.add_heading("Stockage", level=2)
+        _add_table(docx, _STORAGE_COLUMNS, storage)
+
+
 _RENDERERS: dict[str, Renderer] = {
     "C-001-cover": _render_cover,
     "C-002-identity-page": _render_identity_page,
     "C-003-executive-summary": _render_executive_summary,
+    "C-009-environment": _render_environment,
 }
 
 

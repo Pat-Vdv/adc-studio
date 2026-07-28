@@ -120,16 +120,54 @@ def test_executive_summary_missing_sections_are_empty():
     assert summary.payload["recommended_action"] == ()
 
 
-def test_unsupported_components_are_reported_not_crashed():
-    # À ce stade, C-001 à C-003 ont un builder : les autres composants résolus
-    # doivent produire un diagnostic, jamais une exception.
+def test_environment_is_composed():
     doc = compose_document(_data())
-    assert any("C-009-environment" in d for d in doc.diagnostics)
-    assert not any("C-003-executive-summary" in d for d in doc.diagnostics)
+    environment = doc.components[3]
+    assert environment.component_id == "C-009-environment"
+    assert environment.instance_id == "environment"
+    system = environment.payload["system"]
+    assert system["server_name"] == "SRV-SQL-01"
+    assert system["database_engine"] == "Microsoft SQL Server 2014 Standard"
+    assert system["cpu_logical_count"] == 40  # valeur reprise telle quelle
+    assert system["memory_gb"] == 64
+
+
+def test_environment_storage_rows_are_normalized():
+    environment = compose_document(_data()).components[3]
+    storage = environment.payload["storage"]
+    assert [row["volume"] for row in storage] == ["C:", "D:", "E:", "I:"]
+    assert all(set(row) == {"volume", "role", "allocation_unit_kb"} for row in storage)
+    assert storage[1] == {"volume": "D:", "role": "SQL", "allocation_unit_kb": 64}
+    assert storage[0]["allocation_unit_kb"] is None  # champ non renseigné, conservé
+
+
+def test_environment_tolerates_missing_fields():
+    data = _data()
+    data["environment"] = {"server_name": "SRV-01"}
+    environment = compose_document(data).components[3]
+    assert environment.payload["system"]["server_name"] == "SRV-01"
+    assert environment.payload["system"]["collation"] is None
+    assert environment.payload["storage"] == ()
+
+
+def test_narrative_incident_context_stays_diagnosed():
+    # Le bloc narratif n'est pas un composant du catalogue : il reste un
+    # diagnostic tant qu'aucun builder dédié n'est livré.
+    doc = compose_document(_data())
+    assert any("narrative :: incident-context" in d for d in doc.diagnostics)
+
+
+def test_unsupported_components_are_reported_not_crashed():
+    # À ce stade, C-001 à C-003 et C-009 ont un builder : les autres composants
+    # résolus doivent produire un diagnostic, jamais une exception.
+    doc = compose_document(_data())
+    assert any("C-004-finding" in d for d in doc.diagnostics)
+    assert not any("C-009-environment" in d for d in doc.diagnostics)
     assert [c.component_id for c in doc.components] == [
         "C-001-cover",
         "C-002-identity-page",
         "C-003-executive-summary",
+        "C-009-environment",
     ]
 
 

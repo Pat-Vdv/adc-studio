@@ -1,8 +1,8 @@
 """Tests du renderer DOCX (increment 2).
 
 Périmètre : rendu de la Cover (C-001-cover), de l'identité documentaire
-(C-002-identity-page) et du résumé exécutif (C-003-executive-summary) depuis
-le Document IR.
+(C-002-identity-page), du résumé exécutif (C-003-executive-summary) et de
+l'environnement (C-009-environment) depuis le Document IR.
 """
 from __future__ import annotations
 
@@ -57,14 +57,25 @@ def test_identity_page_texts_present(tmp_path):
     assert "fr-BE" in text  # langue, propre à la page d'identité
 
 
+_REVISIONS_HEADER = ["Version", "Date", "Auteur", "Objet"]
+
+
+def _table_rows(path: Path, header: list[str]) -> list[list[str]]:
+    """Lignes de la table portant cet en-tête (liste vide si aucune)."""
+    for table in DocxDocument(str(path)).tables:
+        rows = [[cell.text for cell in row.cells] for row in table.rows]
+        if rows and rows[0] == header:
+            return rows
+    return []
+
+
 def test_identity_page_omits_empty_optional_tables(tmp_path):
     document = compose_document(_data())
     out = render_docx(document, tmp_path / "report.docx")
     text = _texts(out)
-    docx = DocxDocument(str(out))
     assert "Révisions" not in text
     assert "Diffusion" not in text
-    assert docx.tables == []
+    assert _table_rows(out, _REVISIONS_HEADER) == []
 
 
 def test_identity_page_renders_optional_tables(tmp_path):
@@ -74,12 +85,9 @@ def test_identity_page_renders_optional_tables(tmp_path):
     ]
     document = compose_document(data)
     out = render_docx(document, tmp_path / "report.docx")
-    docx = DocxDocument(str(out))
-    assert "Révisions" in "\n".join(p.text for p in docx.paragraphs)
-    assert len(docx.tables) == 1
-    rows = [[c.text for c in row.cells] for row in docx.tables[0].rows]
-    assert rows[0] == ["Version", "Date", "Auteur", "Objet"]
-    assert rows[1] == ["0.1-draft", "2026-07-28", "A.D.C. srl", "Création"]
+    assert "Révisions" in "\n".join(p.text for p in DocxDocument(str(out)).paragraphs)
+    rows = _table_rows(out, _REVISIONS_HEADER)
+    assert rows[1:] == [["0.1-draft", "2026-07-28", "A.D.C. srl", "Création"]]
 
 
 def test_executive_summary_renders_payload_faithfully(tmp_path):
@@ -114,6 +122,36 @@ def test_executive_summary_omits_empty_sections(tmp_path):
     assert "Contexte" in paragraphs
     assert "Impact métier" not in paragraphs  # pas de titre sans contenu
     assert "Action recommandée" not in paragraphs
+
+
+def test_environment_texts_present(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    assert "Environnement" in text
+    assert "SRV-SQL-01" in text
+    assert "Microsoft SQL Server 2014 Standard" in text
+    assert "French_CI_AS" in text
+    assert "40" in text  # processeurs logiques, valeur numérique rendue
+
+
+def test_environment_storage_table(tmp_path):
+    document = compose_document(_data())
+    out = render_docx(document, tmp_path / "report.docx")
+    assert "Stockage" in _texts(out)
+    rows = _table_rows(out, ["Volume", "Rôle", "Unité d'allocation (Ko)"])
+    assert rows[1] == ["C:", "Système", ""]  # unité non renseignée : cellule vide
+    assert rows[2] == ["D:", "SQL", "64"]
+    assert [row[0] for row in rows[1:]] == ["C:", "D:", "E:", "I:"]
+
+
+def test_environment_without_storage_has_no_table(tmp_path):
+    data = _data()
+    data["environment"].pop("storage")
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    assert "Stockage" not in _texts(out)
+    assert _table_rows(out, ["Volume", "Rôle", "Unité d'allocation (Ko)"]) == []
 
 
 def test_unsupported_component_is_skipped_not_crashed(tmp_path):

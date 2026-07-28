@@ -9,6 +9,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-001-cover
   - C-002-identity-page
   - C-003-executive-summary
+  - C-009-environment
 """
 from __future__ import annotations
 
@@ -109,10 +110,37 @@ def _build_executive_summary(data: dict[str, Any], instance_id: str) -> dict[str
     }
 
 
+def _build_environment(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Environnement technique : caractéristiques système et volumes de stockage.
+
+    Les caractéristiques sont reprises telles quelles (aucune conversion
+    d'unité, aucune valeur déduite) ; les volumes absents donnent un tuple vide.
+    """
+    environment = data.get("environment", {})
+    if not isinstance(environment, dict):
+        environment = {}
+    return {
+        "heading": "Environnement",
+        "system": {
+            "server_name": environment.get("server_name"),
+            "operating_system": environment.get("operating_system"),
+            "database_engine": environment.get("database_engine"),
+            "database_engine_version": environment.get("database_engine_version"),
+            "instance": environment.get("instance"),
+            "primary_database": environment.get("primary_database"),
+            "collation": environment.get("collation"),
+            "cpu_logical_count": environment.get("cpu_logical_count"),
+            "memory_gb": environment.get("memory_gb"),
+        },
+        "storage": _rows(environment.get("storage"), ("volume", "role", "allocation_unit_kb")),
+    }
+
+
 _BUILDERS: dict[str, Builder] = {
     "C-001-cover": _build_cover,
     "C-002-identity-page": _build_identity_page,
     "C-003-executive-summary": _build_executive_summary,
+    "C-009-environment": _build_environment,
 }
 
 
