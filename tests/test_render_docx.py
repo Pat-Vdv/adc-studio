@@ -198,6 +198,57 @@ def test_timeline_absent_renders_no_section(tmp_path):
     assert "Environnement" in _texts(out)  # le reste du rapport est intact
 
 
+def test_incident_context_is_rendered_as_its_own_section(tmp_path):
+    data = _data()
+    data["incident_context"]["description"] = "Circonstances.\n\nSeconde partie."
+    document = compose_document(data)
+    out = render_docx(document, tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    assert "Contexte de l'incident" in paragraphs
+    assert "Déclencheur : Exécution de DBCC CHECKDB" in paragraphs
+    assert "Périmètre : Instance SQL Server APPPROD" in paragraphs
+    assert "Circonstances." in paragraphs
+    assert "Seconde partie." in paragraphs
+
+
+def test_incident_context_status_is_french_in_the_docx_only(tmp_path):
+    document = compose_document(_data())
+    context = next(c for c in document.components if c.instance_id == "incident-context")
+    out = render_docx(document, tmp_path / "report.docx")
+    text = _texts(out)
+    assert context.payload["status"] == "investigated"  # IR canonique
+    assert "Statut : Investigé" in text
+    assert "investigated" not in text
+
+
+def test_incident_context_unknown_status_is_rendered_verbatim(tmp_path):
+    data = _data()
+    data["incident_context"]["status"] = "reopened"
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    assert "Statut : reopened" in _texts(out)
+
+
+def test_incident_context_omits_absent_qualifiers(tmp_path):
+    data = _data()
+    data["incident_context"] = {"description": "Seules les circonstances."}
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
+    # Bornée à la section : les blocs suivants portent aussi un statut.
+    start = paragraphs.index("Contexte de l'incident")
+    section = paragraphs[start : paragraphs.index("Environnement", start)]
+    assert "Seules les circonstances." in section
+    assert not any(p.startswith(("Déclencheur", "Périmètre", "Statut")) for p in section)
+
+
+def test_incident_context_absent_renders_no_section(tmp_path):
+    data = _data()
+    data.pop("incident_context")
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    text = _texts(out)
+    assert "Contexte de l'incident" not in text
+    assert "Environnement" in text  # le reste du rapport est intact
+
+
 def test_finding_is_rendered_as_its_own_section(tmp_path):
     data = _data()
     data["findings"][0]["observation"] = "Symptôme attesté.\n\nSecond paragraphe."
@@ -271,7 +322,9 @@ def test_decision_omits_absent_blocks(tmp_path):
     out = render_docx(document, tmp_path / "report.docx")
     paragraphs = [p.text for p in DocxDocument(str(out)).paragraphs]
     assert "Mesure prise — Mesure sans détail" in paragraphs
-    assert not any(p.startswith("Statut") for p in paragraphs)
+    # Assertion locale à la section : d'autres blocs portent aussi un statut.
+    section = paragraphs[paragraphs.index("Mesure prise — Mesure sans détail") :]
+    assert not any(p.startswith("Statut") for p in section)
 
 
 def test_decisions_are_rendered_independently(tmp_path):

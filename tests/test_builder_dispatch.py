@@ -87,7 +87,7 @@ def test_named_block_never_falls_back_to_another_named_block(monkeypatch):
 
 def test_missing_builder_is_still_diagnosed():
     doc = compose_document(_data())
-    assert any("builder manquant: narrative :: incident-context" in d for d in doc.diagnostics)
+    assert any("builder manquant: narrative :: conclusion" in d for d in doc.diagnostics)
 
 
 # --- Preuve du dispatch sur les blocs narratifs ---------------------------

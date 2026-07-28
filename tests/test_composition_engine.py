@@ -23,6 +23,11 @@ def _data() -> dict:
     return json.loads(DATA.read_text(encoding="utf-8-sig"))
 
 
+def _component(doc, component_id: str) -> ComponentInstance:
+    """Première instance d'un composant : robuste à l'insertion de blocs amont."""
+    return next(c for c in doc.components if c.component_id == component_id)
+
+
 def test_compose_returns_document():
     doc = compose_document(_data())
     assert isinstance(doc, Document)
@@ -123,7 +128,7 @@ def test_executive_summary_missing_sections_are_empty():
 
 def test_environment_is_composed():
     doc = compose_document(_data())
-    environment = doc.components[3]
+    environment = _component(doc, "C-009-environment")
     assert environment.component_id == "C-009-environment"
     assert environment.instance_id == "environment"
     system = environment.payload["system"]
@@ -134,7 +139,7 @@ def test_environment_is_composed():
 
 
 def test_environment_storage_rows_are_normalized():
-    environment = compose_document(_data()).components[3]
+    environment = _component(compose_document(_data()), "C-009-environment")
     storage = environment.payload["storage"]
     assert [row["volume"] for row in storage] == ["C:", "D:", "E:", "I:"]
     assert all(set(row) == {"volume", "role", "allocation_unit_kb"} for row in storage)
@@ -145,7 +150,7 @@ def test_environment_storage_rows_are_normalized():
 def test_environment_tolerates_missing_fields():
     data = _data()
     data["environment"] = {"server_name": "SRV-01"}
-    environment = compose_document(data).components[3]
+    environment = _component(compose_document(data), "C-009-environment")
     assert environment.payload["system"]["server_name"] == "SRV-01"
     assert environment.payload["system"]["collation"] is None
     assert environment.payload["storage"] == ()
@@ -511,11 +516,56 @@ def test_narrative_probable_cause_stays_diagnosed():
     assert any("narrative :: probable-cause" in d for d in doc.diagnostics)
 
 
-def test_narrative_incident_context_stays_diagnosed():
-    # Le bloc narratif n'est pas un composant du catalogue : il reste un
-    # diagnostic tant qu'aucun builder dédié n'est livré.
+def _incident_context(doc) -> ComponentInstance:
+    return next(c for c in doc.components if c.instance_id == "incident-context")
+
+
+def test_incident_context_is_composed():
+    context = _incident_context(compose_document(_data()))
+    assert context.component_id == "narrative"  # identité de composant inchangée
+    source = _data()["incident_context"]
+    assert context.payload["description"] == (source["description"],)
+    assert context.payload["trigger"] == source["trigger"]
+    assert context.payload["scope"] == source["scope"]
+
+
+def test_incident_context_status_stays_canonical_in_the_ir():
+    payload = _incident_context(compose_document(_data())).payload
+    assert payload["status"] == "investigated"
+    assert "Investigé" not in str(payload)
+
+
+def test_incident_context_splits_description_paragraphs():
+    data = _data()
+    data["incident_context"]["description"] = "Premier paragraphe.\n\nSecond paragraphe."
+    payload = _incident_context(compose_document(data)).payload
+    assert payload["description"] == ("Premier paragraphe.", "Second paragraphe.")
+
+
+def test_incident_context_tolerates_missing_fields():
+    data = _data()
+    data["incident_context"] = {"description": "Seules les circonstances."}
+    payload = _incident_context(compose_document(data)).payload
+    assert payload["description"] == ("Seules les circonstances.",)
+    assert payload["trigger"] is None  # jamais déduit d'un autre champ
+    assert payload["scope"] is None
+    assert payload["status"] is None
+
+
+def test_incident_context_absent_produces_no_instance():
+    data = _data()
+    data.pop("incident_context")
+    doc = compose_document(data)
+    assert not any(c.instance_id == "incident-context" for c in doc.components)
+    # Le profil le déclare obligatoire : son absence est une anomalie tracée.
+    assert any("cardinalité non respectée: narrative" in d for d in doc.diagnostics)
+
+
+def test_remaining_narrative_blocks_stay_diagnosed():
+    # Les blocs narratifs non encore pris en charge restent diagnostiqués.
     doc = compose_document(_data())
-    assert any("narrative :: incident-context" in d for d in doc.diagnostics)
+    assert any("narrative :: conclusion" in d for d in doc.diagnostics)
+    assert not any("narrative :: incident-context" in d for d in doc.diagnostics)
 
 
 def test_unsupported_components_are_reported_not_crashed():
@@ -528,6 +578,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-001-cover",
         "C-002-identity-page",
         "C-003-executive-summary",
+        "narrative",  # incident-context
         "C-009-environment",
         "C-008-timeline",
         "C-004-finding",

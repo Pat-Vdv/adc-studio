@@ -13,6 +13,7 @@ substitution). Développement incrémental — composants rendus :
   - C-005-recommendation
   - C-006-risk
   - C-010-evidence
+  - narrative :: incident-context
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
 (pas d'exception, pas de contenu fantôme) : la traçabilité des composants non
@@ -35,6 +36,10 @@ from .model import ComponentInstance, Document
 # référencées par identifiant.
 Renderer = Callable[[Any, ComponentInstance, dict[str, Any]], None]
 
+# Identité d'un bloc pour le dispatch, comme côté composition : plusieurs blocs
+# peuvent partager un `component_id` et viser des renderers différents.
+RendererKey = tuple[str, str | None]
+
 
 # Libellés de présentation des énumérations partagées par plusieurs composants.
 # La valeur canonique est commune (low/medium/high/critical), mais son accord
@@ -54,11 +59,18 @@ _ENUM_LABELS_MASCULINE: dict[str, str] = {
     "critical": "Critique",
 }
 
+# Vocabulaires éditoriaux propres à un champ : ils ne décrivent pas une échelle
+# partagée et ne se mélangent donc pas au vocabulaire ci-dessus.
+_INCIDENT_STATUS_LABELS: dict[str, str] = {
+    "investigated": "Investigé",
+}
+
 # Champ de présentation -> vocabulaire accordé au substantif correspondant.
 _ENUM_VOCABULARIES: dict[str, dict[str, str]] = {
     "severity": _ENUM_LABELS_FEMININE,  # Gravité
     "priority": _ENUM_LABELS_FEMININE,  # Priorité
     "risk_level": _ENUM_LABELS_MASCULINE,  # Niveau
+    "incident_status": _INCIDENT_STATUS_LABELS,  # Statut du contexte d'incident
 }
 
 
@@ -385,18 +397,57 @@ def _render_evidence(docx: Any, instance: ComponentInstance, context: dict[str, 
             docx.add_paragraph(str(block))
 
 
-_RENDERERS: dict[str, Renderer] = {
-    "C-001-cover": _render_cover,
-    "C-002-identity-page": _render_identity_page,
-    "C-003-executive-summary": _render_executive_summary,
-    "C-009-environment": _render_environment,
-    "C-008-timeline": _render_timeline,
-    "C-004-finding": _render_finding,
-    "C-007-decision": _render_decision,
-    "C-005-recommendation": _render_recommendation,
-    "C-006-risk": _render_risk,
-    "C-010-evidence": _render_evidence,
-}
+def _render_incident_context(docx: Any, instance: ComponentInstance, context: dict[str, Any]) -> None:
+    payload = instance.payload
+
+    # Section autonome du corps : aucun titre de partie commun aux blocs.
+    docx.add_heading(payload.get("heading") or "Contexte de l'incident", level=1)
+
+    _add_label_value(docx, "Déclencheur", payload.get("trigger"))
+    _add_label_value(docx, "Périmètre", payload.get("scope"))
+    _add_label_value(docx, "Statut", _enum_label(payload.get("status"), "incident_status"))
+
+    for block in payload.get("description") or ():
+        docx.add_paragraph(str(block))
+
+
+def _registry(
+    entries: tuple[tuple[str, str | None, Renderer], ...]
+) -> dict[RendererKey, Renderer]:
+    """Table des renderers, indexée par identité de bloc — doublon refusé."""
+    registry: dict[RendererKey, Renderer] = {}
+    for component_id, instance_id, renderer in entries:
+        key = (component_id, instance_id)
+        if key in registry:
+            raise ValueError(f"renderer déclaré deux fois: {component_id} :: {instance_id or '*'}")
+        registry[key] = renderer
+    return registry
+
+
+# Même règle de dispatch que les builders : entrée nommée prioritaire, entrée
+# générique (type, None) en second, jamais de repli vers un autre bloc nommé.
+_RENDERERS: dict[RendererKey, Renderer] = _registry(
+    (
+        ("C-001-cover", None, _render_cover),
+        ("C-002-identity-page", None, _render_identity_page),
+        ("C-003-executive-summary", None, _render_executive_summary),
+        ("C-009-environment", None, _render_environment),
+        ("C-008-timeline", None, _render_timeline),
+        ("C-004-finding", None, _render_finding),
+        ("C-007-decision", None, _render_decision),
+        ("C-005-recommendation", None, _render_recommendation),
+        ("C-006-risk", None, _render_risk),
+        ("C-010-evidence", None, _render_evidence),
+        ("narrative", "incident-context", _render_incident_context),
+    )
+)
+
+
+def _renderer_for(component_id: str, instance_id: str) -> Renderer | None:
+    specific = _RENDERERS.get((component_id, instance_id))
+    if specific is not None:
+        return specific
+    return _RENDERERS.get((component_id, None))
 
 
 def render_docx(document: Document, output_path: str | Path) -> Path:
@@ -414,7 +465,7 @@ def render_docx(document: Document, output_path: str | Path) -> Path:
 
     docx = DocxDocument()
     for instance in document.components:
-        renderer = _RENDERERS.get(instance.component_id)
+        renderer = _renderer_for(instance.component_id, instance.instance_id)
         if renderer is None:
             continue  # non rendu à ce stade — voir Document.diagnostics
         renderer(docx, instance, context)

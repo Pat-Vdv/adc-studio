@@ -17,6 +17,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-005-recommendation
   - C-006-risk
   - C-010-evidence
+  - narrative :: incident-context
 """
 from __future__ import annotations
 
@@ -171,6 +172,24 @@ def _build_timeline(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     return {
         "heading": "Chronologie",
         "entries": _rows(data.get("timeline"), ("id", "timestamp", "title", "description")),
+    }
+
+
+def _build_incident_context(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+    """Contexte de l'incident : circonstances, déclencheur, périmètre, statut.
+
+    Le statut garde sa valeur canonique et n'est déduit d'aucun autre champ ;
+    les qualificatifs absents restent absents.
+    """
+    source = data.get("incident_context", {})
+    if not isinstance(source, dict):
+        source = {}
+    return {
+        "heading": "Contexte de l'incident",
+        "description": _paragraphs(source.get("description")),
+        "trigger": source.get("trigger"),
+        "scope": source.get("scope"),
+        "status": source.get("status"),
     }
 
 
@@ -357,6 +376,7 @@ _BUILDERS: dict[BuilderKey, Builder] = _registry(
         ("C-005-recommendation", None, _build_recommendation),
         ("C-006-risk", None, _build_risk),
         ("C-010-evidence", None, _build_evidence),
+        ("narrative", "incident-context", _build_incident_context),
     )
 )
 

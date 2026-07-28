@@ -27,7 +27,7 @@ _SINGLE_OCCURRENCE_SOURCES: dict[str, str | None] = {
     "cover": None,
     "identity": None,
     "executive-summary": None,
-    "incident-context": None,
+    "incident-context": "incident_context",
     "environment": None,
     "timeline": "timeline",
     "probable-cause": "probable_cause",
