@@ -11,9 +11,37 @@ def validator():
     sys.modules["validator"]=module; spec.loader.exec_module(module); return module
 def data(): return json.loads(DPATH.read_text(encoding="utf-8-sig"))
 def test_reference_input_is_valid(): assert validator().validate(data())==[]
-def test_missing_title_is_reported():
-    d=copy.deepcopy(data()); del d["findings"][0]["title"]
-    assert "$.findings[0].title: required field missing" in [str(x) for x in validator().validate(d)]
+
+# --- Partage avec les contrats de composants -------------------------------
+#
+# Les règles de forme ne sont plus vérifiées deux fois. Chaque cas ci-dessous
+# le prouve des deux côtés : le validateur métier ne la porte plus, le contrat
+# du composant la porte. Une règle qui disparaîtrait des deux fait échouer le
+# test — c'est la seule garantie qu'elle a changé de responsable et non de vie.
+
+TRANSFERRED=(
+    ("constat sans titre",             lambda d: d["findings"][0].pop("title"),            "$.findings[0].title",            "C-004-finding",         "required"),
+    ("constat sans identifiant",       lambda d: d["findings"][0].pop("id"),               "$.findings[0].id",               "C-004-finding",         "required"),
+    ("gravité hors vocabulaire",       lambda d: d["findings"][0].update(severity="urgent"),"$.findings[0].severity",         "C-004-finding",         "enum"),
+    ("recommandation sans rationale",  lambda d: d["recommendations"][0].pop("rationale"), "$.recommendations[0].rationale", "C-005-recommendation",  "required"),
+    ("priorité hors vocabulaire",      lambda d: d["recommendations"][0].update(priority="P1"),"$.recommendations[0].priority","C-005-recommendation","enum"),
+    ("preuve à identifiant vide",      lambda d: d["evidence"][0].update(id=""),           "$.evidence[0].id",               "C-010-evidence",        "minLength"),
+    ("identifiant non textuel",        lambda d: d["findings"][0].update(id=42),           "$.findings[0].id",               "C-004-finding",         "type"),
+)
+
+@pytest.mark.parametrize("label,break_it,path,component,code",TRANSFERRED,ids=[c[0] for c in TRANSFERRED])
+def test_a_form_rule_belongs_to_the_contract_alone(label,break_it,path,component,code):
+    import adc_contracts
+    d=copy.deepcopy(data()); break_it(d)
+    business=[x for x in validator().validate(d) if x.path.startswith(path)]
+    assert business==[], f"le validateur métier redit une règle de forme : {business}"
+    contract=[x for x in adc_contracts.report_diagnostics(d) if x.component==component and x.code==code]
+    assert contract, "la règle n'est portée par personne"
+
+def test_the_reference_source_still_satisfies_both_validations():
+    import adc_contracts
+    assert validator().validate(data())==[]
+    assert adc_contracts.report_diagnostics(data())==()
 def test_unknown_evidence_is_rejected():
     d=copy.deepcopy(data()); d["findings"][0]["evidence_ids"]=["missing"]
     assert any("unknown reference 'missing'" in str(x) for x in validator().validate(d))

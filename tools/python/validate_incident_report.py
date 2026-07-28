@@ -25,9 +25,6 @@ import adc_contracts  # noqa: E402
 from adc_diagnostics import BUSINESS, ValidationDiagnostic  # noqa: E402
 from adc_profile import load_profile, resolve  # noqa: E402
 
-SEVERITIES={"low","medium","high","critical"}
-PRIORITIES=SEVERITIES
-
 PROFILE_PATH = Path(__file__).resolve().parents[2] / "profiles" / "p-003-incident-report.yaml"
 
 # Vocabulaire des diagnostics métier. La forme a le sien — les mots-clés du
@@ -75,6 +72,18 @@ def references(item:dict,field:str,path:str,issues:list[ValidationDiagnostic])->
     return usable
 
 def validate(data:Any)->list[ValidationDiagnostic]:
+    """Règles métier d'une source de rapport d'incident.
+
+    La forme locale — champs requis d'une occurrence, vocabulaires fermés,
+    types — appartient aux contrats de composants et n'est pas revérifiée ici
+    (ADR-0010). Ne subsistent que les règles qu'aucun schéma local ne peut
+    voir : présence des noeuds de la famille, unicité des identifiants,
+    résolubilité des références.
+
+    Les diagnostics « malformed » ne sont pas une exception à ce partage : ils
+    ne portent pas de verdict sur la forme, ils déclarent une abstention — le
+    validateur ne peut pas appliquer une règle métier à ce noeud.
+    """
     issues=[]
     if not isinstance(data,dict): return [issue("$",MALFORMED,"malformed: object expected")]
     required=("schema_version","report","client","executive_summary","incident_context","environment","findings","recommendations","evidence","conclusion")
@@ -91,26 +100,20 @@ def validate(data:Any)->list[ValidationDiagnostic]:
         seen=set()
         for i,item in items:
             raw=item.get("id")
-            # Un identifiant non textuel n'entre pas dans un index : non
-            # hachable, il ferait lever l'appartenance à l'ensemble.
-            if raw is not None and not isinstance(raw,str):
-                issues.append(issue(f"$.{name}[{i}].id",MALFORMED,"malformed: string expected")); continue
-            if not raw:
-                issues.append(issue(f"$.{name}[{i}].id",MISSING,"required field missing")); continue
-            if item["id"] in seen: issues.append(issue(f"$.{name}[{i}].id",DUPLICATE,f"duplicate id '{item['id']}'"))
-            seen.add(item["id"])
+            # Qu'un identifiant soit présent, textuel et non vide relève du
+            # contrat du composant. Ici, un identifiant inexploitable est
+            # seulement écarté de l'index — non hachable, il ferait d'ailleurs
+            # lever l'appartenance à l'ensemble. Les références qui le visent
+            # deviendront non résolues, ce qui est le vrai constat métier.
+            if not isinstance(raw,str) or not raw: continue
+            if raw in seen: issues.append(issue(f"$.{name}[{i}].id",DUPLICATE,f"duplicate id '{raw}'"))
+            seen.add(raw)
         return seen
     finding_ids=ids("findings",findings); recommendation_ids=ids("recommendations",recommendations); evidence_ids=ids("evidence",evidence)
     for i,item in findings:
-        for field in ("id","title","severity","observation","impact","analysis","evidence_ids"):
-            if field not in item: issues.append(issue(f"$.findings[{i}].{field}",MISSING,"required field missing"))
-        if item.get("severity") not in SEVERITIES: issues.append(issue(f"$.findings[{i}].severity",UNEXPECTED,f"expected one of {sorted(SEVERITIES)}"))
         for j,ref in references(item,"evidence_ids",f"$.findings[{i}]",issues):
             if ref not in evidence_ids: issues.append(issue(f"$.findings[{i}].evidence_ids[{j}]",UNKNOWN_REFERENCE,f"unknown reference '{ref}'"))
     for i,item in recommendations:
-        for field in ("id","title","priority","description","rationale","related_finding_ids"):
-            if field not in item: issues.append(issue(f"$.recommendations[{i}].{field}",MISSING,"required field missing"))
-        if item.get("priority") not in PRIORITIES: issues.append(issue(f"$.recommendations[{i}].priority",UNEXPECTED,f"expected one of {sorted(PRIORITIES)}"))
         for j,ref in references(item,"related_finding_ids",f"$.recommendations[{i}]",issues):
             if ref not in finding_ids: issues.append(issue(f"$.recommendations[{i}].related_finding_ids[{j}]",UNKNOWN_REFERENCE,f"unknown reference '{ref}'"))
     for i,item in risks:
