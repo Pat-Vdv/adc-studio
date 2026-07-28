@@ -130,6 +130,69 @@ def test_component_contract_is_complete_and_consistent(component_id):
     assert adc_contracts.example_errors(component_id) == ()
 
 
+# --- C-003 Executive Summary ----------------------------------------------
+
+C_003 = "C-003-executive-summary"
+_SUMMARY_FIELDS = ("context", "business_impact", "conclusion", "recommended_action")
+
+
+def _summary_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_003), component=C_003
+    )
+
+
+def test_executive_summary_of_the_reference_report_is_valid():
+    """Le durcissement ne doit pas invalider la source de référence."""
+    source = json.loads(
+        (
+            adc_contracts.ROOT
+            / "reference_reports"
+            / "incident_report"
+            / "data"
+            / "sql_server_2014_incident.json"
+        ).read_text(encoding="utf-8-sig")
+    )
+    assert _summary_errors(source["executive_summary"]) == ()
+
+
+@pytest.mark.parametrize("field", _SUMMARY_FIELDS)
+def test_executive_summary_accepts_a_single_field(field):
+    # Aucun volet n'est requis : la composition tolère leur absence, le schéma
+    # ne prétend donc pas l'inverse.
+    assert _summary_errors({field: "Texte."}) == ()
+
+
+def test_executive_summary_accepts_an_empty_fragment():
+    assert _summary_errors({}) == ()
+
+
+@pytest.mark.parametrize("value", [["Paragraphe"], 42, None, {"texte": "x"}])
+def test_executive_summary_rejects_a_non_string_field(value):
+    errors = _summary_errors({"context": value})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_003}: $.context: ")
+
+
+def test_executive_summary_rejects_an_unknown_field():
+    errors = _summary_errors({"context": "Texte.", "impact_technique": "Hors contrat."})
+    assert len(errors) == 1
+    assert "impact_technique" in errors[0]
+
+
+def test_executive_summary_rejects_a_non_object_fragment():
+    errors = _summary_errors(["Texte."])
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_003}: $: ")
+
+
+def test_executive_summary_example_covers_every_field():
+    # L'exemple est la première preuve positive du contrat : il doit démontrer
+    # le contrat entier, pas un sous-ensemble commode.
+    example = adc_contracts.load_json(adc_contracts.example_path(C_003))
+    assert set(example) == set(_SUMMARY_FIELDS)
+
+
 def test_components_without_contract_are_exactly_the_declared_ones():
     """Suivi explicite des trous restants, plutôt qu'un silence.
 

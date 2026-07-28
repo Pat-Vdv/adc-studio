@@ -1,5 +1,25 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-003 Executive Summary — fragment source",
+  "description": "Forme du noeud `executive_summary` de la source. La normalisation en paragraphes appartient au builder et n'apparaît pas ici.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Circonstances résumées de l'incident."
+    },
+    "business_impact": {
+      "type": "string",
+      "description": "Impact métier observé."
+    },
+    "conclusion": {
+      "type": "string",
+      "description": "Synthèse des conclusions attestées."
+    },
+    "recommended_action": {
+      "type": "string",
+      "description": "Action prioritaire recommandée."
+    }
+  }
 }

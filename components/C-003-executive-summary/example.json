@@ -1,4 +1,6 @@
 {
-  "component_id":"",
-  "component_version":"1.0"
+  "context": "Le contrôle d'intégrité planifié sur l'instance de production a bloqué les accès applicatifs pendant la matinée du 12 mars.\n\nL'incident a été clos le jour même, après restauration du service.",
+  "business_impact": "La saisie des commandes et la facturation ont été indisponibles pendant quatre heures ouvrées.",
+  "conclusion": "Aucune corruption de données n'est attestée. Le blocage provient de la charge du contrôle d'intégrité sur une instance dimensionnée pour la seule production.",
+  "recommended_action": "Exécuter les contrôles d'intégrité hors production, sur une restauration récente."
 }
