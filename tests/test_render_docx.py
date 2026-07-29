@@ -11,6 +11,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
 from docx import Document as DocxDocument
 
 from adc_engine import ComponentInstance, compose_document
@@ -713,3 +714,58 @@ def test_render_does_not_mutate_document(tmp_path):
     before = copy.deepcopy(document)
     render_docx(document, tmp_path / "report.docx")
     assert document == before
+
+
+# --- Blocs narratifs vides : une règle, pas quatre -------------------------
+#
+# Les quatre blocs suivaient deux conventions opposées : la conclusion se
+# gardait du titre orphelin, le contexte et la cause probable le posaient quand
+# même. Le lecteur voyait donc un intitulé sans contenu dans un cas, et rien
+# dans l'autre, pour un même état de la source.
+#
+# La convention retenue est celle que le renderer suivait déjà pour les volets
+# d'un constat, d'une preuve et de la conclusion : un bloc sans contenu n'écrit
+# rien. Elle relève du rendu (ADR-0009, I3) et d'aucun contrat de source.
+
+_EMPTY = (
+    ("incident_context", {}, "Contexte de l'incident"),
+    ("probable_cause", {}, "Cause probable"),
+    ("conclusion", "", "Conclusion"),
+    ("investigations", [{"id": "inv-vide"}], "Investigation"),
+)
+
+_MINIMAL = (
+    ("incident_context", {"scope": "Instance de production"}, "Contexte de l'incident"),
+    ("probable_cause", {"confidence": "unknown"}, "Cause probable"),
+    ("conclusion", "Un mot suffit.", "Conclusion"),
+    ("investigations", [{"id": "inv-1", "result": "Confirmé"}], "Investigation"),
+)
+
+
+@pytest.mark.parametrize("node,empty,heading", _EMPTY, ids=[case[0] for case in _EMPTY])
+def test_an_empty_narrative_block_writes_no_orphan_heading(tmp_path, node, empty, heading):
+    data = {**_data(), node: empty}
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    assert heading not in _headings(out, "Heading 1")
+
+
+@pytest.mark.parametrize("node,content,heading", _MINIMAL, ids=[case[0] for case in _MINIMAL])
+def test_a_single_field_is_enough_to_render_the_block(tmp_path, node, content, heading):
+    # L'autre moitié de la règle : la garde ne doit pas manger un bloc qui a
+    # quelque chose à dire, si peu que ce soit.
+    data = {**_data(), node: content}
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    assert heading in _headings(out, "Heading 1")
+
+
+def test_a_block_whose_only_references_are_unresolved_writes_nothing(tmp_path):
+    """Le vide se juge sur ce qui serait affiché, pas sur les clés du payload.
+
+    Une référence sans libellé n'est jamais écrite (I4) : un bloc qui n'aurait
+    que celle-là n'a rien à montrer, et ne pose donc pas son titre. L'écart, lui,
+    reste dit — par la composition et par le validateur métier.
+    """
+    data = {**_data(), "probable_cause": {"supporting_finding_ids": ["finding-404"]}}
+    out = render_docx(compose_document(data), tmp_path / "report.docx")
+    assert "Cause probable" not in _headings(out, "Heading 1")
+    assert "finding-404" not in _texts(out)
