@@ -111,11 +111,23 @@ def test_compose_document_stays_unguarded_below_the_boundary():
 
 
 def test_a_root_fragment_is_not_a_gate():
-    # Aucun contrat ne couvre les blocs narratifs : leur contenu ne peut pas
-    # fermer la frontière (ADR-0010).
+    # Aucun contrat ne couvre les blocs narratifs restants : leur contenu ne
+    # peut pas fermer la frontière (ADR-0010). `incident_context` n'en fait
+    # plus partie depuis sa contractualisation (ADR-0013).
+    source = _source()
+    source["probable_cause"] = {"n'importe quoi": 42}
+    assert compose_from_source(source).components
+
+
+def test_a_contractualised_block_is_a_gate():
+    # Le pendant du test précédent : le même contenu, sur un bloc désormais
+    # couvert, arrête la chaîne. C'est la seule différence introduite par le
+    # contrat — le bloc n'a changé ni de builder, ni de renderer, ni de place.
     source = _source()
     source["incident_context"] = {"n'importe quoi": 42}
-    assert compose_from_source(source).components
+    with pytest.raises(SourceContractError) as refused:
+        compose_from_source(source)
+    assert [d.component for d in refused.value.diagnostics] == ["C-011-incident-context"]
 
 
 # --- Le générateur ---------------------------------------------------------

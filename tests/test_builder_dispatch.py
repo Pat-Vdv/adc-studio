@@ -107,10 +107,13 @@ def test_missing_builder_is_still_diagnosed(monkeypatch):
 
 
 def test_narrative_blocks_reach_distinct_builders(monkeypatch):
-    """Trois blocs de `component_id` identique, trois builders différents."""
+    """Des blocs de `component_id` identique visent des builders différents.
 
-    def context_builder(_data_source, instance_id):
-        return {"bloc": "contexte"}
+    Ce que le test prouve est le **mécanisme** de dispatch, pas le nombre de
+    blocs qui en dépendent : `incident-context` a quitté cette famille en
+    devenant un composant (ADR-0013), et le marqueur `narrative` ne subsiste
+    que pour les blocs dont le statut n'est pas encore décidé.
+    """
 
     def cause_builder(_data_source, instance_id):
         return {"bloc": "cause"}
@@ -123,7 +126,6 @@ def test_narrative_blocks_reach_distinct_builders(monkeypatch):
         "_BUILDERS",
         compose._registry(
             (
-                ("narrative", "incident-context", context_builder),
                 ("narrative", "probable-cause", cause_builder),
                 ("narrative", "conclusion", conclusion_builder),
             )
@@ -136,7 +138,6 @@ def test_narrative_blocks_reach_distinct_builders(monkeypatch):
         if instance.component_id == "narrative"
     }
     assert narratives == {
-        "incident-context": {"bloc": "contexte"},
         "probable-cause": {"bloc": "cause"},
         "conclusion": {"bloc": "conclusion"},
     }

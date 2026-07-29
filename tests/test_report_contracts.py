@@ -87,7 +87,6 @@ def test_a_root_fragment_is_declared_without_being_covered():
     il faudra alors le déclarer composant catalogue, pas l'y laisser.
     """
     assert set(_root_fragments()) == {
-        "incident_context",
         "probable_cause",
         "conclusion",
         "investigations",
@@ -98,7 +97,7 @@ def test_a_root_fragment_is_declared_without_being_covered():
 
 def test_a_root_fragment_is_never_validated():
     source = _reference_source()
-    source["incident_context"] = {"n'importe quoi": 42}
+    source["probable_cause"] = {"n'importe quoi": 42}
     source["conclusion"] = ["forme libre", 1, None]
     assert adc_contracts.report_diagnostics(source) == ()
 

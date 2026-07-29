@@ -17,7 +17,7 @@ Développement incrémental (cas SQL Server Incident) — composants pris en cha
   - C-005-recommendation
   - C-006-risk
   - C-010-evidence
-  - narrative :: incident-context
+  - C-011-incident-context
   - narrative-investigation
   - narrative :: probable-cause
   - narrative :: conclusion
@@ -428,7 +428,7 @@ _BUILDERS: dict[BuilderKey, Builder] = _registry(
         ("C-005-recommendation", None, _build_recommendation),
         ("C-006-risk", None, _build_risk),
         ("C-010-evidence", None, _build_evidence),
-        ("narrative", "incident-context", _build_incident_context),
+        ("C-011-incident-context", "incident-context", _build_incident_context),
         ("narrative-investigation", None, _build_investigation),
         ("narrative", "probable-cause", _build_probable_cause),
         ("narrative", "conclusion", _build_conclusion),

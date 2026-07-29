@@ -132,7 +132,7 @@ def test_the_validator_and_the_resolution_agree_on_a_present_but_empty_node():
     """
     data = {**_reference_source(), "incident_context": {}}
     assert [d for d in validate(data) if d.path == "$.incident_context"] == []
-    assert ("narrative", "incident-context") in _blocks(data)
+    assert ("C-011-incident-context", "incident-context") in _blocks(data)
 
 
 def test_an_empty_node_produces_no_cardinality_diagnostic():

@@ -1,0 +1,6 @@
+{
+  "description": "L'incident est survenu pendant la fenêtre de maintenance hebdomadaire.\n\nLes utilisateurs ont signalé des délais d'attente sur l'application de gestion.",
+  "trigger": "Exécution de DBCC CHECKDB",
+  "scope": "Instance SQL Server APPPROD",
+  "status": "investigated"
+}

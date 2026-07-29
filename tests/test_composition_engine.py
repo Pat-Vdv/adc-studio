@@ -521,7 +521,7 @@ def _incident_context(doc) -> ComponentInstance:
 
 def test_incident_context_is_composed():
     context = _incident_context(compose_document(_data()))
-    assert context.component_id == "narrative"  # identité de composant inchangée
+    assert context.component_id == "C-011-incident-context"  # promu au catalogue (ADR-0013)
     source = _data()["incident_context"]
     assert context.payload["description"] == (source["description"],)
     assert context.payload["trigger"] == source["trigger"]
@@ -557,7 +557,7 @@ def test_incident_context_absent_produces_no_instance():
     doc = compose_document(data)
     assert not any(c.instance_id == "incident-context" for c in doc.components)
     # Le profil le déclare obligatoire : son absence est une anomalie tracée.
-    assert any("cardinalité non respectée: narrative" in d for d in doc.diagnostics)
+    assert any("cardinalité non respectée: C-011-incident-context" in d for d in doc.diagnostics)
 
 
 def _investigations(doc) -> list[ComponentInstance]:
@@ -762,7 +762,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-001-cover",
         "C-002-identity-page",
         "C-003-executive-summary",
-        "narrative",  # incident-context
+        "C-011-incident-context",
         "C-009-environment",
         "C-008-timeline",
         "narrative-investigation",

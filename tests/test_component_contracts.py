@@ -1031,3 +1031,77 @@ def test_components_without_contract_are_exactly_the_declared_ones():
     """
     missing = tuple(c for c in adc_contracts.component_ids() if not adc_contracts.has_contract(c))
     assert missing == COMPONENTS_WITHOUT_CONTRACT
+
+
+# --- C-011 Incident Context ------------------------------------------------
+#
+# Premier bloc narratif promu au catalogue (ADR-0013). Son contrat suit le motif
+# de C-003 : un chapitre unique, objet plat, aucun champ requis, aucun champ
+# inconnu toléré.
+
+C_011 = "C-011-incident-context"
+_CONTEXT_FIELDS = ("description", "trigger", "scope", "status")
+
+
+def _context_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_011), component=C_011
+    )
+
+
+def test_incident_context_of_the_reference_report_is_valid():
+    assert _context_errors(_reference_source()["incident_context"]) == ()
+
+
+@pytest.mark.parametrize("field", _CONTEXT_FIELDS)
+def test_incident_context_accepts_a_single_field(field):
+    # Aucun champ n'est requis : un contexte partiellement rédigé se compose.
+    assert _context_errors({field: "Texte."}) == ()
+
+
+def test_incident_context_accepts_an_empty_fragment():
+    # Vide n'est pas malformé (ADR-0012, G4) : le nœud présent et vide reste
+    # une section à rédiger, que le contrat n'a aucune raison de refuser.
+    assert _context_errors({}) == ()
+
+
+def test_incident_context_rejects_a_misspelled_field():
+    """Le cas de référence de la contractualisation (ADR-0013).
+
+    `descriptio` traversait toute la chaîne sans un seul diagnostic et produisait
+    une section vide. Le contrat est désormais propriétaire de la forme, et c'est
+    la seule chose qui a changé pour ce bloc.
+    """
+    errors = _context_errors({"descriptio": "Tout le contexte rédigé."})
+    assert len(errors) == 1
+    assert "descriptio" in errors[0]
+
+
+@pytest.mark.parametrize("value", [["Paragraphe"], 42, None, {"texte": "x"}])
+def test_incident_context_rejects_a_non_string_field(value):
+    errors = _context_errors({"description": value})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_011}: $.description: ")
+
+
+def test_incident_context_rejects_a_non_object_fragment():
+    errors = _context_errors("Contexte libre.")
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_011}: $: ")
+
+
+def test_incident_context_leaves_the_status_vocabulary_open():
+    """Aucune règle de domaine ne ferme `status` (ADR-0010).
+
+    Que le renderer sache traduire `investigated` relève de la présentation et
+    n'atteste rien : le fermer ici inventerait un vocabulaire, comme un `enum`
+    sur le `level` d'un risque en inventerait un. Ce test tombera le jour où le
+    domaine énoncera la liste — et ce jour-là, il devra être remplacé, pas
+    contourné.
+    """
+    assert _context_errors({"status": "totalement_inventé"}) == ()
+
+
+def test_incident_context_example_covers_every_field():
+    example = adc_contracts.load_json(adc_contracts.example_path(C_011))
+    assert set(example) == set(_CONTEXT_FIELDS)

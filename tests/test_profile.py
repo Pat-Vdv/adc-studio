@@ -189,5 +189,10 @@ def test_unknown_block_is_diagnosed_not_silently_dropped(tmp_path):
 def test_narrative_blocks_are_all_supported():
     composed = compose_document(_data())
     narratives = [c.instance_id for c in composed.components if c.component_id == "narrative"]
-    assert narratives == ["incident-context", "probable-cause", "conclusion"]
+    # `incident-context` a quitté le marqueur en devenant un composant
+    # (ADR-0013) : il reste composé, à sa place, sous sa nouvelle identité.
+    assert narratives == ["probable-cause", "conclusion"]
     assert not any("narrative" in d for d in composed.diagnostics)
+    assert [c.component_id for c in composed.components if c.instance_id == "incident-context"] == [
+        "C-011-incident-context"
+    ]
