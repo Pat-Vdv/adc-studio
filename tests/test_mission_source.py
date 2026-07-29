@@ -18,6 +18,7 @@ import yaml
 
 import adc_contracts
 import adc_mission
+from adc_engine.validation import validate
 
 # `metadata.yml` tel que `New-ADCClientReport` l'écrit aujourd'hui, verbatim.
 # Le reproduire ici fige la forme réelle : si le script change, le test doit
@@ -67,7 +68,11 @@ def test_a_fresh_mission_produces_a_contract_clean_source(mission):
 def test_an_empty_mission_produces_a_contract_clean_source(tmp_path):
     (tmp_path / adc_mission.METADATA_FILE).write_text("", encoding="utf-8")
     source = adc_mission.mission_source(tmp_path)
-    assert source == {"report": {}, "client": {}}
+    assert source == {
+        "schema_version": adc_mission.CONTRACT_VERSION,
+        "report": {},
+        "client": {},
+    }
     assert adc_contracts.report_diagnostics(source) == ()
 
 
@@ -103,10 +108,11 @@ def test_a_workshop_field_without_counterpart_does_not_cross(mission, workshop_k
 
 def test_the_two_nodes_exist_even_when_the_mission_is_bare(tmp_path):
     # Leur absence serait un défaut de la source, pas de sa traduction : le
-    # validateur métier les exige à la racine.
+    # validateur métier les exige à la racine. `schema_version` les accompagne
+    # sans être traduite — le pont la produit (R6).
     (tmp_path / adc_mission.METADATA_FILE).write_text("titre: X\n", encoding="utf-8")
     source = adc_mission.mission_source(tmp_path)
-    assert set(source) == {"report", "client"}
+    assert set(source) == {"schema_version", "report", "client"}
 
 
 # --- Traduire n'est pas normaliser (R3) ------------------------------------
@@ -170,6 +176,39 @@ def test_writing_an_empty_identifier_would_break_the_contract():
     """
     errors = adc_contracts.report_diagnostics({"report": {"id": ""}, "client": {}})
     assert [d.component for d in errors] == ["C-002-identity-page"]
+
+
+# --- Les métadonnées du contrat sont produites, pas traduites (R6) ---------
+
+
+def test_the_contract_metadata_is_written_even_by_a_bare_workshop(tmp_path):
+    """`schema_version` caractérise l'enveloppe, pas la mission (ADR-0011, R6).
+
+    Elle échappe donc à R4 : rien dans l'atelier ne la porte, et son absence ne
+    serait pas « une valeur absente » mais une source qui tait le contrat auquel
+    elle obéit.
+    """
+    (tmp_path / adc_mission.METADATA_FILE).write_text("", encoding="utf-8")
+    assert adc_mission.mission_source(tmp_path)["schema_version"] == adc_mission.CONTRACT_VERSION
+
+
+def test_no_workshop_field_can_dictate_the_contract_version():
+    # `framework_version` décrit l'atelier, et une clé canonique écrite dans un
+    # `metadata.yml` reste du vocabulaire d'atelier : le pont pose la version,
+    # il ne la reçoit de personne.
+    source = adc_mission.to_source({"framework_version": "9.9", "schema_version": "9.9"})
+    assert source["schema_version"] == adc_mission.CONTRACT_VERSION
+
+
+def test_the_produced_version_is_the_one_the_business_validator_expects():
+    """Le seul garant de l'accord entre le pont et le validateur.
+
+    Aucune constante n'est partagée : le pont ignore le moteur, et c'est
+    délibéré (ADR-0011). Si les deux divergeaient, toute mission produirait une
+    source rejetée sur sa seule version — ce test le dirait avant l'utilisateur.
+    """
+    diagnostics = validate(adc_mission.to_source({}))
+    assert [d for d in diagnostics if d.path == "$.schema_version"] == []
 
 
 # --- Métadonnées illisibles -------------------------------------------------

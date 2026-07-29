@@ -31,6 +31,13 @@ import yaml
 
 METADATA_FILE = "metadata.yml"
 
+# Version du contrat que ce pont produit (ADR-0011, R6). Elle ne vient pas de
+# l'atelier : elle décrit l'enveloppe, pas le rapport. Le validateur métier
+# déclare la sienne de son côté ; leur accord n'est garanti par aucun partage de
+# constante — le moteur étant hors du périmètre du pont — mais par un test qui
+# confronte la source produite au validateur.
+CONTRACT_VERSION = "1.0"
+
 # Correspondance atelier -> source, clé par clé. Elle est une donnée, pas une
 # convention : aucune règle ne permet de deviner que `classification` devient
 # `confidentiality`. Les clés d'atelier absentes de cette table — `etat`,
@@ -92,11 +99,16 @@ def _carried(metadata: dict[str, Any], fields: dict[str, str]) -> dict[str, Any]
 def to_source(metadata: dict[str, Any]) -> dict[str, Any]:
     """Source contractuelle correspondant aux métadonnées d'une mission.
 
+    `schema_version` est **produite** et non traduite (ADR-0011, R6) : elle
+    décrit le contrat auquel la structure obéit, pas une information de la
+    mission. Elle est donc toujours écrite, y compris pour un atelier vide.
+
     Les deux noeuds `report` et `client` sont toujours présents, même vides :
     le validateur métier les exige à la racine, et leur absence serait un défaut
     de la source, non de sa traduction.
     """
     return {
+        "schema_version": CONTRACT_VERSION,
         "report": _carried(metadata, REPORT_FIELDS),
         "client": _carried(metadata, CLIENT_FIELDS),
     }
