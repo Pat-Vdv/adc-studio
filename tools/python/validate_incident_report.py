@@ -53,6 +53,19 @@ def entries(data:Any,name:str,issues:list[ValidationDiagnostic])->list[tuple[int
         else: issues.append(issue(f"$.{name}[{i}]",MALFORMED,"malformed: object expected"))
     return usable
 
+def node(data:Any,name:str,issues:list[ValidationDiagnostic])->dict|None:
+    """Noeud exploitable d'un bloc unique, l'écart étant déclaré plutôt que tu.
+
+    Pendant de `entries` pour un noeud qui n'est pas une collection : un noeud
+    absent ne dit rien, un noeud mal formé n'est pas jugé — le validateur
+    déclare seulement qu'aucune règle métier ne peut lui être appliquée.
+    """
+    raw=data.get(name)
+    if raw is None: return None
+    if not isinstance(raw,dict):
+        issues.append(issue(f"$.{name}",MALFORMED,"malformed: object expected")); return None
+    return raw
+
 def references(item:dict,field:str,path:str,issues:list[ValidationDiagnostic])->list[tuple[int,str]]:
     """Références exploitables d'un champ, les autres étant signalées.
 
@@ -119,6 +132,13 @@ def validate(data:Any)->list[ValidationDiagnostic]:
     for i,item in risks:
         for j,ref in references(item,"mitigation_recommendation_ids",f"$.risks[{i}]",issues):
             if ref not in recommendation_ids: issues.append(issue(f"$.risks[{i}].mitigation_recommendation_ids[{j}]",UNKNOWN_REFERENCE,f"unknown reference '{ref}'"))
+    # `probable_cause` est un bloc unique, mais ses références sont des
+    # références comme les autres : une cible inconnue est un défaut métier
+    # (ADR-0009), quel que soit le statut contractuel du noeud qui la porte.
+    probable_cause=node(data,"probable_cause",issues)
+    if probable_cause is not None:
+        for j,ref in references(probable_cause,"supporting_finding_ids","$.probable_cause",issues):
+            if ref not in finding_ids: issues.append(issue(f"$.probable_cause.supporting_finding_ids[{j}]",UNKNOWN_REFERENCE,f"unknown reference '{ref}'"))
     return issues
 
 def summary_blocks(data:dict[str,Any])->tuple[tuple[str,str],...]:

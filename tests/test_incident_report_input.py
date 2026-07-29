@@ -48,6 +48,25 @@ def test_unknown_evidence_is_rejected():
 def test_unknown_finding_is_rejected():
     d=copy.deepcopy(data()); d["recommendations"][0]["related_finding_ids"]=["missing"]
     assert any("unknown reference 'missing'" in str(x) for x in validator().validate(d))
+def test_unknown_supporting_finding_is_rejected():
+    # Une référence portée par un bloc unique reste une référence : son
+    # contrôle appartient au métier, pas à la composition qui la signalait
+    # seule jusqu'ici.
+    d=copy.deepcopy(data()); d["probable_cause"]["supporting_finding_ids"]=["missing"]
+    issues=validator().validate(d)
+    assert [str(x) for x in issues]==["$.probable_cause.supporting_finding_ids[0]: unknown reference 'missing'"]
+    assert issues[0].code=="unknown_reference"
+def test_a_resolvable_supporting_finding_is_accepted():
+    d=copy.deepcopy(data()); d["probable_cause"]["supporting_finding_ids"]=[d["findings"][0]["id"]]
+    assert validator().validate(d)==[]
+def test_a_malformed_probable_cause_is_declared_not_judged():
+    # Le validateur ne dit pas quelle forme le noeud devrait avoir — ce sera au
+    # contrat. Il déclare seulement qu'il ne peut y appliquer aucune règle.
+    d=copy.deepcopy(data()); d["probable_cause"]="cause probable"
+    assert [str(x) for x in validator().validate(d)]==["$.probable_cause: malformed: object expected"]
+def test_a_malformed_supporting_list_invents_no_reference():
+    d=copy.deepcopy(data()); d["probable_cause"]["supporting_finding_ids"]="finding-001"
+    assert [str(x) for x in validator().validate(d)]==["$.probable_cause.supporting_finding_ids: malformed: list expected"]
 
 # --- Robustesse : aucune exception observable -------------------------------
 #
