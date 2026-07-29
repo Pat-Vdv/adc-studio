@@ -721,17 +721,29 @@ def test_conclusion_ignores_a_non_string_source():
     assert _conclusion(compose_document(data)).payload["text"] == ()
 
 
-def test_conclusion_absent_or_empty_produces_no_instance():
-    for value in (None, ""):
-        data = _data()
-        if value is None:
-            data.pop("conclusion")
-        else:
-            data["conclusion"] = value
-        doc = compose_document(data)
-        assert not any(c.instance_id == "conclusion" for c in doc.components)
-        # Le profil la déclare obligatoire : l'écart est tracé, rien n'est fabriqué.
-        assert any("cardinalité non respectée: narrative" in d for d in doc.diagnostics)
+def test_conclusion_absent_produces_no_instance():
+    data = _data()
+    data.pop("conclusion")
+    doc = compose_document(data)
+    assert not any(c.instance_id == "conclusion" for c in doc.components)
+    # Le profil la déclare obligatoire : l'écart est tracé, rien n'est fabriqué.
+    assert any("cardinalité non respectée: narrative" in d for d in doc.diagnostics)
+
+
+def test_conclusion_present_but_empty_produces_an_instance():
+    """Vide n'est pas absent (ADR-0012, G4).
+
+    La clé existe : la source déclare cette partie, son texte reste à écrire.
+    L'occurrence est donc résolue — comme pour une source non textuelle, que le
+    test voisin décrit — et son payload est vide sans que rien ne soit fabriqué.
+    Aucune cardinalité n'est violée : le profil attend une occurrence, il en a une.
+    """
+    data = _data()
+    data["conclusion"] = ""
+    doc = compose_document(data)
+    assert any(c.instance_id == "conclusion" for c in doc.components)
+    assert not any("cardinalité non respectée: narrative" in d for d in doc.diagnostics)
+    assert _conclusion(doc).payload["text"] == ()
 
 
 def test_reference_report_composes_without_diagnostics():

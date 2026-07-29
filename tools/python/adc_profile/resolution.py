@@ -12,6 +12,13 @@ Le partage des responsabilités est strict :
 Aucune occurrence n'est fabriquée pour satisfaire une cardinalité : un écart
 produit un diagnostic, jamais un bloc vide.
 
+La présence d'un nœud est **structurelle**, jamais booléenne (ADR-0012, G4) : un
+nœud présent mais vide est présent, et porte l'occurrence que le profil attend.
+Le juger par la véracité de sa valeur confondrait cinq états — clé absente,
+`None`, objet vide, liste vide, chaîne vide — et ferait dire à la cardinalité ce
+que la présence a déjà dit autrement, en contredisant le validateur métier qui en
+est propriétaire. Qu'un contenu vide soit recevable ne se décide pas ici.
+
 Ce module ne connaît ni la composition, ni le rendu, ni la validation : c'est
 ce qui permet à plusieurs outils de partager la même description de l'ordre.
 """
@@ -55,7 +62,7 @@ def _occurrences(entry: ProfileEntry, data: dict[str, Any]) -> tuple[tuple[str, 
         if entry.instance_id not in _SINGLE_OCCURRENCE_SOURCES:
             return (), f"source d'occurrences inconnue: {entry.component_id} :: {entry.instance_id}"
         key = _SINGLE_OCCURRENCE_SOURCES[entry.instance_id]
-        present = True if key is None else bool(data.get(key))
+        present = True if key is None else key in data
         return ((entry.instance_id,) if present else ()), None
 
     if entry.component_id not in _MULTIPLE_OCCURRENCE_SOURCES:
