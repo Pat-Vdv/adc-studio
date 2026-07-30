@@ -1,0 +1,6 @@
+{
+  "id": "investigation-001",
+  "title": "Analyse des attentes de verrous",
+  "description": "Capture des sessions bloquantes pendant la fenêtre d'incident.\n\nCorrélation avec les tâches de maintenance planifiées.",
+  "result": "Attente confirmée sur la base APPPROD"
+}

@@ -561,7 +561,7 @@ def test_incident_context_absent_produces_no_instance():
 
 
 def _investigations(doc) -> list[ComponentInstance]:
-    return [c for c in doc.components if c.component_id == "narrative-investigation"]
+    return [c for c in doc.components if c.component_id == "C-012-investigation"]
 
 
 def test_investigation_instance_matches_its_source_entry():
@@ -615,7 +615,7 @@ def test_investigations_absent_or_empty_produce_no_instance():
     doc = compose_document(data)
     assert _investigations(doc) == []
     # Cardinalité 0..n : aucune anomalie, aucune occurrence fabriquée.
-    assert not any("narrative-investigation" in d for d in doc.diagnostics)
+    assert not any("C-012-investigation" in d for d in doc.diagnostics)
 
 
 def _probable_cause(doc) -> ComponentInstance:
@@ -765,7 +765,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-011-incident-context",
         "C-009-environment",
         "C-008-timeline",
-        "narrative-investigation",
+        "C-012-investigation",
         "C-004-finding",
         "narrative",  # probable-cause
         "C-007-decision",

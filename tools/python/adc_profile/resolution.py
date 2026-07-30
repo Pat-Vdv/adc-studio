@@ -43,7 +43,7 @@ _SINGLE_OCCURRENCE_SOURCES: dict[str, str | None] = {
 
 # Bloc répétable -> collection source qui porte ses occurrences.
 _MULTIPLE_OCCURRENCE_SOURCES: dict[str, str] = {
-    "narrative-investigation": "investigations",
+    "C-012-investigation": "investigations",
     "C-004-finding": "findings",
     "C-007-decision": "actions_taken",
     "C-005-recommendation": "recommendations",

@@ -20,6 +20,7 @@ Ce catalogue décrit les composants documentaires officiels du framework.
 | C-009 | Environment | 1.0-draft | 🟡 Draft |
 | C-010 | Evidence | 1.0-draft | 🟡 Draft |
 | C-011 | Incident Context | 1.0-draft | 🟡 Draft |
+| C-012 | Investigation | 1.0-draft | 🟡 Draft |
 ---
 
 ## C-001 — Cover
@@ -110,6 +111,15 @@ Ce catalogue décrit les composants documentaires officiels du framework.
 - **Objectif :** décrire les circonstances de l'incident, son déclencheur et son périmètre.
 - **Structure :** description, déclencheur, périmètre, statut.
 - **Règle :** le contexte décrit des circonstances, jamais une cause ou une conclusion.
+- **Origine :** bloc narratif promu au catalogue par ADR-0013.
+
+## C-012 — Investigation
+
+- **Version :** 1.0-draft
+- **Statut :** 🟡 Draft
+- **Objectif :** consigner un travail d'investigation : ce qui a été cherché, comment, et ce que la recherche a donné.
+- **Structure :** identifiant, intitulé, description, résultat.
+- **Règle :** seul l'identifiant est requis — il conditionne l'existence de l'occurrence.
 - **Origine :** bloc narratif promu au catalogue par ADR-0013.
 
 ---

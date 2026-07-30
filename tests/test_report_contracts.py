@@ -89,7 +89,6 @@ def test_a_root_fragment_is_declared_without_being_covered():
     assert set(_root_fragments()) == {
         "probable_cause",
         "conclusion",
-        "investigations",
     }
     for name in _root_fragments():
         assert not adc_contracts.has_contract(name)

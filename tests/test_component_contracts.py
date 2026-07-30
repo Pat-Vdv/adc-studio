@@ -1105,3 +1105,101 @@ def test_incident_context_leaves_the_status_vocabulary_open():
 def test_incident_context_example_covers_every_field():
     example = adc_contracts.load_json(adc_contracts.example_path(C_011))
     assert set(example) == set(_CONTEXT_FIELDS)
+
+
+# --- C-012 Investigation ---------------------------------------------------
+#
+# Deuxième bloc narratif promu (ADR-0013), et premier composant répétable de la
+# série. Son contrat suit le motif de C-004 pour l'identité, mais n'exige que
+# celle-ci : aucune règle de domaine n'atteste les autres champs.
+
+C_012 = "C-012-investigation"
+_INVESTIGATION_FIELDS = ("id", "title", "description", "result")
+
+
+def _investigation_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_012), component=C_012
+    )
+
+
+def test_investigation_of_the_reference_report_is_valid():
+    assert _investigation_errors(_reference_source()["investigations"][0]) == ()
+
+
+def test_investigation_requires_its_identifier():
+    """Le seul champ requis, et la raison d'être du contrat (ADR-0010).
+
+    L'identifiant est un **prérequis de consommation** : le moteur instancie
+    l'occurrence par lui. Une entrée qui n'en porte pas n'est ni identifiée ni
+    instanciée — elle disparaissait du document sans le moindre diagnostic.
+    """
+    errors = _investigation_errors({"title": "Sans identifiant", "result": "Confirmé"})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_012}: $: ")
+    assert "id" in errors[0]
+
+
+def test_investigation_rejects_an_empty_identifier():
+    # Un identifiant vide ne permet ni instanciation, ni diagnostic utile : il
+    # ne vaut pas mieux qu'absent.
+    errors = _investigation_errors({"id": ""})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_012}: $.id: ")
+
+
+def test_investigation_accepts_an_entry_reduced_to_its_identifier():
+    # Une investigation en cours de rédaction se compose : seule l'identité est
+    # exigée, le reste relève de la qualité de restitution.
+    assert _investigation_errors({"id": "investigation-001"}) == ()
+
+
+def test_investigation_does_not_require_a_title():
+    """Le titre est une qualité de restitution, pas un prérequis (ADR-0010).
+
+    Sans lui, l'en-tête perd son libellé mais l'occurrence est composée et
+    rendue. L'exiger ferait porter au contrat source une exigence de
+    présentation ; cette promotion demanderait que le domaine énonce la règle.
+    """
+    assert _investigation_errors({"id": "investigation-001", "result": "Confirmé"}) == ()
+
+
+@pytest.mark.parametrize("value", [["Paragraphe"], 42, None, {"texte": "x"}])
+def test_investigation_rejects_a_non_string_field(value):
+    errors = _investigation_errors({"id": "investigation-001", "description": value})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_012}: $.description: ")
+
+
+def test_investigation_rejects_an_unknown_field():
+    errors = _investigation_errors({"id": "investigation-001", "conclusion": "Hors contrat."})
+    assert len(errors) == 1
+    assert "conclusion" in errors[0]
+
+
+def test_investigation_rejects_a_non_object_entry():
+    errors = _investigation_errors("Investigation libre.")
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_012}: $: ")
+
+
+def test_investigation_leaves_the_result_vocabulary_open():
+    # Aucune règle de domaine ne ferme `result`, et le renderer le restitue tel
+    # quel : le fermer inventerait un vocabulaire (ADR-0010).
+    assert _investigation_errors({"id": "investigation-001", "result": "totalement_inventé"}) == ()
+
+
+def test_investigation_says_nothing_about_uniqueness():
+    """Un schéma local ne voit qu'une occurrence à la fois (ADR-0010).
+
+    Deux investigations partageant un identifiant sont chacune conformes ; le
+    défaut n'existe qu'à l'échelle du rapport, et appartient donc au validateur
+    métier (ADR-0012, G1).
+    """
+    entry = {"id": "investigation-001", "title": "Doublon"}
+    assert _investigation_errors(entry) == ()
+
+
+def test_investigation_example_covers_every_field():
+    example = adc_contracts.load_json(adc_contracts.example_path(C_012))
+    assert set(example) == set(_INVESTIGATION_FIELDS)

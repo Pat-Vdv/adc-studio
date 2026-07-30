@@ -14,7 +14,7 @@ substitution). Développement incrémental — composants rendus :
   - C-006-risk
   - C-010-evidence
   - C-011-incident-context
-  - narrative-investigation
+  - C-012-investigation
   - narrative :: probable-cause
   - narrative :: conclusion
 
@@ -519,7 +519,7 @@ _RENDERERS: dict[RendererKey, Renderer] = _registry(
         ("C-006-risk", None, _render_risk),
         ("C-010-evidence", None, _render_evidence),
         ("C-011-incident-context", "incident-context", _render_incident_context),
-        ("narrative-investigation", None, _render_investigation),
+        ("C-012-investigation", None, _render_investigation),
         ("narrative", "probable-cause", _render_probable_cause),
         ("narrative", "conclusion", _render_conclusion),
     )

@@ -119,15 +119,27 @@ def test_a_root_fragment_is_not_a_gate():
     assert compose_from_source(source).components
 
 
-def test_a_contractualised_block_is_a_gate():
-    # Le pendant du test précédent : le même contenu, sur un bloc désormais
-    # couvert, arrête la chaîne. C'est la seule différence introduite par le
-    # contrat — le bloc n'a changé ni de builder, ni de renderer, ni de place.
+_CONTRACTUALISED = (
+    # Bloc, contenu fautif, contrat qui le refuse. Chaque cas est repris de
+    # l'état de référence mesuré avant contractualisation (ADR-0013) : tous
+    # traversaient alors la chaîne entière sans un seul diagnostic.
+    ("incident_context", {"descriptio": "Tout le contexte rédigé."}, "C-011-incident-context"),
+    ("incident_context", {"n'importe quoi": 42}, "C-011-incident-context"),
+    ("investigations", [{"title": "Sans identifiant"}], "C-012-investigation"),
+)
+
+
+@pytest.mark.parametrize("node,content,component", _CONTRACTUALISED)
+def test_a_contractualised_block_is_a_gate(node, content, component):
+    # Le pendant du test précédent : le même genre de contenu, sur un bloc
+    # désormais couvert, arrête la chaîne. C'est la seule différence introduite
+    # par le contrat — aucun de ces blocs n'a changé de builder, de renderer ni
+    # de place dans le document.
     source = _source()
-    source["incident_context"] = {"n'importe quoi": 42}
+    source[node] = content
     with pytest.raises(SourceContractError) as refused:
         compose_from_source(source)
-    assert [d.component for d in refused.value.diagnostics] == ["C-011-incident-context"]
+    assert [d.component for d in refused.value.diagnostics] == [component]
 
 
 # --- Le générateur ---------------------------------------------------------
