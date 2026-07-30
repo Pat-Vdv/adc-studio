@@ -63,10 +63,15 @@ par appartenance à une famille.** Cette règle prime sur les statuts qui suiven
 sont son application à quatre cas, non une liste close.
 
 **`incident_context` — composant du catalogue.**
-Il doit garantir un vocabulaire fermé (`status`) et une structure à champs connus. Aucune
-autre couche ne peut fermer ce vocabulaire : la table de traduction du renderer traduit ce
-qu'elle connaît et restitue le reste tel quel, en anglais. `C-003-executive-summary` porte
+Il doit garantir une **structure à champs connus** : un champ mal orthographié était
+auparavant ignoré en silence et produisait une section vide. `C-003-executive-summary` porte
 déjà exactement cette forme.
+
+Le vocabulaire de `status` n'est en revanche **pas** fermé par ce contrat. Aucune règle de
+domaine ne l'atteste, et la table de traduction du renderer relève de la présentation, qui
+n'atteste rien (ADR-0010, origine d'une contrainte). Le fermer inventerait un vocabulaire —
+même asymétrie assumée que pour le `level` d'un risque — et demandera que le domaine énonce
+d'abord la liste des statuts admis.
 
 **`investigations` — composant du catalogue.**
 Il doit garantir une **identité** : `id` est l'identifiant d'occurrence dans l'IR, et une
