@@ -109,6 +109,8 @@ def validate(data:Any)->list[ValidationDiagnostic]:
     recommendations=entries(data,"recommendations",issues)
     evidence=entries(data,"evidence",issues)
     risks=entries(data,"risks",issues)
+    decisions=entries(data,"actions_taken",issues)
+    investigations=entries(data,"investigations",issues)
     def ids(name,items):
         seen=set()
         for i,item in items:
@@ -123,6 +125,13 @@ def validate(data:Any)->list[ValidationDiagnostic]:
             seen.add(raw)
         return seen
     finding_ids=ids("findings",findings); recommendation_ids=ids("recommendations",recommendations); evidence_ids=ids("evidence",evidence)
+    # Les trois blocs répétables que personne ne référence. L'unicité n'y est
+    # pas moins exigible : la résolution instancie **toute** occurrence par son
+    # identifiant, et deux entrées qui le partagent composent deux fois la
+    # première — la seconde disparaît du rapport sans diagnostic. L'unicité est
+    # donc une propriété de l'identité d'occurrence, pas un service rendu aux
+    # références ; l'index qu'elles produisent n'a ici aucun consommateur.
+    ids("actions_taken",decisions); ids("risks",risks); ids("investigations",investigations)
     for i,item in findings:
         for j,ref in references(item,"evidence_ids",f"$.findings[{i}]",issues):
             if ref not in evidence_ids: issues.append(issue(f"$.findings[{i}].evidence_ids[{j}]",UNKNOWN_REFERENCE,f"unknown reference '{ref}'"))

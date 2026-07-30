@@ -195,6 +195,34 @@ def test_a_business_diagnostic_keeps_its_own_text():
     duplicated=[x for x in validator().validate(d) if x.code=="duplicate_id"]
     assert [str(x) for x in duplicated]==["$.evidence[1].id: duplicate id 'evidence-001'"]
 
+# --- Unicité des identifiants d'occurrence ---------------------------------
+#
+# Six blocs répétables, une seule règle. L'unicité n'était contrôlée que sur les
+# trois blocs que d'autres référencent — elle avait été posée comme prérequis
+# des références. Mais la résolution instancie **toute** occurrence par son
+# identifiant : deux entrées qui le partagent composent deux fois la première,
+# et la seconde disparaît du rapport sans diagnostic.
+
+REPEATABLE=("findings","recommendations","evidence","risks","actions_taken","investigations")
+
+@pytest.mark.parametrize("node",REPEATABLE)
+def test_a_duplicate_occurrence_identifier_is_rejected(node):
+    d=copy.deepcopy(data())
+    entries=d.get(node)
+    assert entries, f"la source de référence ne porte aucune occurrence de {node}"
+    d[node]=[copy.deepcopy(entries[0]),copy.deepcopy(entries[0])]
+    duplicated=[x for x in validator().validate(d) if x.code=="duplicate_id"]
+    assert [x.path for x in duplicated]==[f"$.{node}[1].id"]
+
+@pytest.mark.parametrize("node",REPEATABLE)
+def test_distinct_identifiers_raise_nothing(node):
+    # L'autre moitié de la règle : elle ne se déclenche pas sur des occurrences
+    # légitimement répétées.
+    d=copy.deepcopy(data())
+    second=copy.deepcopy(d[node][0]); second["id"]=f"{second['id']}-bis"
+    d[node]=[copy.deepcopy(d[node][0]),second]
+    assert [x for x in validator().validate(d) if x.code=="duplicate_id"]==[]
+
 def test_the_command_line_runs_both_validations(tmp_path):
     """La rencontre des deux validations a lieu ici, pas dans `validate`."""
     d=copy.deepcopy(data())
