@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-013 Probable Cause — fragment source",
+  "description": "Forme du noeud `probable_cause` de la source. Le découpage de l'énoncé en paragraphes appartient au builder et n'apparaît pas ici.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "statement": {
+      "type": "string",
+      "description": "Énoncé de la cause probable. Les paragraphes sont séparés par une ligne vide ; le builder les découpe."
+    },
+    "confidence": {
+      "type": "string",
+      "description": "Niveau de confiance déclaré. Aucun vocabulaire n'est fermé ici : aucune règle de domaine ne l'atteste, et que le renderer sache traduire certaines valeurs relève de la présentation (ADR-0010)."
+    },
+    "supporting_finding_ids": {
+      "type": "array",
+      "description": "Constats à l'appui, désignés par identifiant, dans l'ordre de la source. Leur existence est vérifiée par le validateur, pas ici.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

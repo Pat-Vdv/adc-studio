@@ -106,30 +106,26 @@ def test_missing_builder_is_still_diagnosed(monkeypatch):
 # --- Preuve du dispatch sur les blocs narratifs ---------------------------
 
 
-def test_narrative_blocks_reach_distinct_builders(monkeypatch):
-    """Des blocs de `component_id` identique visent des builders différents.
+def test_the_remaining_narrative_block_reaches_its_builder(monkeypatch):
+    """Le marqueur `narrative` ne porte plus qu'un bloc, et il atteint le sien.
 
-    Ce que le test prouve est le **mécanisme** de dispatch, pas le nombre de
-    blocs qui en dépendent : `incident-context` a quitté cette famille en
-    devenant un composant (ADR-0013), et le marqueur `narrative` ne subsiste
-    que pour les blocs dont le statut n'est pas encore décidé.
+    Ce test démontrait autrefois, de bout en bout, que plusieurs blocs partageant
+    un `component_id` visaient des builders différents. Trois d'entre eux sont
+    devenus des composants (ADR-0013) et seul `conclusion` reste sous le
+    marqueur : la démonstration end-to-end n'a plus de matière dans le profil
+    réel.
+
+    Le mécanisme lui-même n'est pas moins couvert — les tests voisins le prouvent
+    sur des registres synthétiques, où deux clés de même `component_id`
+    coexistent et se distinguent. Ce qui disparaît ici est un cas de figure du
+    profil, pas une garantie.
     """
-
-    def cause_builder(_data_source, instance_id):
-        return {"bloc": "cause"}
 
     def conclusion_builder(_data_source, instance_id):
         return {"bloc": "conclusion"}
 
     monkeypatch.setattr(
-        compose,
-        "_BUILDERS",
-        compose._registry(
-            (
-                ("narrative", "probable-cause", cause_builder),
-                ("narrative", "conclusion", conclusion_builder),
-            )
-        ),
+        compose, "_BUILDERS", compose._registry((("narrative", "conclusion", conclusion_builder),))
     )
     composed = compose_document(_data())
     narratives = {
@@ -137,9 +133,4 @@ def test_narrative_blocks_reach_distinct_builders(monkeypatch):
         for instance in composed.components
         if instance.component_id == "narrative"
     }
-    assert narratives == {
-        "probable-cause": {"bloc": "cause"},
-        "conclusion": {"bloc": "conclusion"},
-    }
-    # Le composant n'a pas changé d'identité pour autant.
-    assert all(i.component_id == "narrative" for i in composed.components if i.instance_id in narratives)
+    assert narratives == {"conclusion": {"bloc": "conclusion"}}

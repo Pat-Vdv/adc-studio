@@ -86,17 +86,13 @@ def test_a_root_fragment_is_declared_without_being_covered():
     est opposé, et ce test échouera le jour où l'un d'eux gagnera un contrat —
     il faudra alors le déclarer composant catalogue, pas l'y laisser.
     """
-    assert set(_root_fragments()) == {
-        "probable_cause",
-        "conclusion",
-    }
+    assert set(_root_fragments()) == {"conclusion"}
     for name in _root_fragments():
         assert not adc_contracts.has_contract(name)
 
 
 def test_a_root_fragment_is_never_validated():
     source = _reference_source()
-    source["probable_cause"] = {"n'importe quoi": 42}
     source["conclusion"] = ["forme libre", 1, None]
     assert adc_contracts.report_diagnostics(source) == ()
 

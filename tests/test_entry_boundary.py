@@ -115,7 +115,7 @@ def test_a_root_fragment_is_not_a_gate():
     # peut pas fermer la frontière (ADR-0010). `incident_context` n'en fait
     # plus partie depuis sa contractualisation (ADR-0013).
     source = _source()
-    source["probable_cause"] = {"n'importe quoi": 42}
+    source["conclusion"] = {"n'importe quoi": 42}
     assert compose_from_source(source).components
 
 
@@ -126,6 +126,7 @@ _CONTRACTUALISED = (
     ("incident_context", {"descriptio": "Tout le contexte rédigé."}, "C-011-incident-context"),
     ("incident_context", {"n'importe quoi": 42}, "C-011-incident-context"),
     ("investigations", [{"title": "Sans identifiant"}], "C-012-investigation"),
+    ("probable_cause", {"supporting_finding_ids": "finding-001"}, "C-013-probable-cause"),
 )
 
 

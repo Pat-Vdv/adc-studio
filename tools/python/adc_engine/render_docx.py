@@ -15,7 +15,7 @@ substitution). Développement incrémental — composants rendus :
   - C-010-evidence
   - C-011-incident-context
   - C-012-investigation
-  - narrative :: probable-cause
+  - C-013-probable-cause
   - narrative :: conclusion
 
 Un composant présent dans l'IR mais sans renderer est **ignoré proprement**
@@ -520,7 +520,7 @@ _RENDERERS: dict[RendererKey, Renderer] = _registry(
         ("C-010-evidence", None, _render_evidence),
         ("C-011-incident-context", "incident-context", _render_incident_context),
         ("C-012-investigation", None, _render_investigation),
-        ("narrative", "probable-cause", _render_probable_cause),
+        ("C-013-probable-cause", "probable-cause", _render_probable_cause),
         ("narrative", "conclusion", _render_conclusion),
     )
 )

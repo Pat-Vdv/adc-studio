@@ -46,7 +46,7 @@ components:
     min: 0
     max: null
 
-  - type: narrative
+  - type: C-013-probable-cause
     instance: probable-cause
     min: 0
     max: 1

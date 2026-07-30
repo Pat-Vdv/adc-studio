@@ -676,7 +676,7 @@ def test_probable_cause_unknown_reference_is_diagnosed():
         "finding-404",
     )  # l'IR conserve la référence déclarée
     assert any(
-        "référence non résolue: narrative :: probable-cause -> finding-404" in d
+        "référence non résolue: C-013-probable-cause :: probable-cause -> finding-404" in d
         for d in doc.diagnostics
     )
 
@@ -767,7 +767,7 @@ def test_unsupported_components_are_reported_not_crashed():
         "C-008-timeline",
         "C-012-investigation",
         "C-004-finding",
-        "narrative",  # probable-cause
+        "C-013-probable-cause",
         "C-007-decision",
         "C-005-recommendation",
         "C-006-risk",

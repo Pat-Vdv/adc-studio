@@ -86,8 +86,8 @@ INCIDENT_REPORT_FRAGMENTS: dict[str, Fragment] = {
     "C-010-evidence": Fragment(CATALOG_COMPONENT, OCCURRENCE, "evidence"),
     "C-011-incident-context": Fragment(CATALOG_COMPONENT, NODE, "incident_context"),
     "C-012-investigation": Fragment(CATALOG_COMPONENT, OCCURRENCE, "investigations"),
+    "C-013-probable-cause": Fragment(CATALOG_COMPONENT, NODE, "probable_cause"),
     # Blocs `narrative` du profil : bâtis par des builders, sans contrat.
-    "probable_cause": Fragment(ROOT_FRAGMENT, NODE, "probable_cause"),
     "conclusion": Fragment(ROOT_FRAGMENT, NODE, "conclusion"),
 }
 

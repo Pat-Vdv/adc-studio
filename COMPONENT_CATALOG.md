@@ -21,6 +21,7 @@ Ce catalogue décrit les composants documentaires officiels du framework.
 | C-010 | Evidence | 1.0-draft | 🟡 Draft |
 | C-011 | Incident Context | 1.0-draft | 🟡 Draft |
 | C-012 | Investigation | 1.0-draft | 🟡 Draft |
+| C-013 | Probable Cause | 1.0-draft | 🟡 Draft |
 ---
 
 ## C-001 — Cover
@@ -120,6 +121,15 @@ Ce catalogue décrit les composants documentaires officiels du framework.
 - **Objectif :** consigner un travail d'investigation : ce qui a été cherché, comment, et ce que la recherche a donné.
 - **Structure :** identifiant, intitulé, description, résultat.
 - **Règle :** seul l'identifiant est requis — il conditionne l'existence de l'occurrence.
+- **Origine :** bloc narratif promu au catalogue par ADR-0013.
+
+## C-013 — Probable Cause
+
+- **Version :** 1.0-draft
+- **Statut :** 🟡 Draft
+- **Objectif :** énoncer la cause probable, son niveau de confiance et les constats qui l'appuient.
+- **Structure :** énoncé, confiance, constats à l'appui.
+- **Règle :** une cause probable est une hypothèse argumentée, jamais un fait établi.
 - **Origine :** bloc narratif promu au catalogue par ADR-0013.
 
 ---

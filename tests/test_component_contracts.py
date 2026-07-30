@@ -1203,3 +1203,91 @@ def test_investigation_says_nothing_about_uniqueness():
 def test_investigation_example_covers_every_field():
     example = adc_contracts.load_json(adc_contracts.example_path(C_012))
     assert set(example) == set(_INVESTIGATION_FIELDS)
+
+
+# --- C-013 Probable Cause --------------------------------------------------
+#
+# Troisième et dernier bloc promu par ADR-0013. Seul des trois à porter des
+# références sortantes : c'est leur forme, et elle seule, que son contrat
+# garantit — la résolubilité restant au validateur métier (ADR-0012, G1).
+
+C_013 = "C-013-probable-cause"
+_CAUSE_FIELDS = ("statement", "confidence", "supporting_finding_ids")
+
+
+def _cause_errors(fragment) -> tuple[str, ...]:
+    return adc_contracts.validation_errors(
+        fragment, adc_contracts.load_schema(C_013), component=C_013
+    )
+
+
+def test_probable_cause_of_the_reference_report_is_valid():
+    assert _cause_errors(_reference_source()["probable_cause"]) == ()
+
+
+def test_probable_cause_rejects_a_reference_list_written_as_a_string():
+    """La raison d'être de ce contrat.
+
+    `supporting_finding_ids` écrit comme une chaîne était ignoré en silence par
+    le builder : les constats cités disparaissaient du rapport sans que rien ne
+    le signale. La forme est désormais opposable.
+    """
+    errors = _cause_errors({"supporting_finding_ids": "finding-001"})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_013}: $.supporting_finding_ids: ")
+
+
+@pytest.mark.parametrize("value", [[42], [None], [["finding-001"]], [{"id": "finding-001"}]])
+def test_probable_cause_rejects_a_non_textual_reference(value):
+    errors = _cause_errors({"supporting_finding_ids": value})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_013}: $.supporting_finding_ids[0]: ")
+
+
+def test_probable_cause_rejects_an_empty_reference():
+    # Une référence vide ne désigne rien et ne peut pas être résolue.
+    errors = _cause_errors({"supporting_finding_ids": [""]})
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_013}: $.supporting_finding_ids[0]: ")
+
+
+def test_probable_cause_accepts_an_unresolvable_reference():
+    """Le contrat garantit la forme, jamais la cible (ADR-0010).
+
+    Un identifiant bien formé mais inconnu est conforme ici, et diagnostiqué
+    par le validateur métier — c'est le partage que P1 avait rétabli.
+    """
+    assert _cause_errors({"supporting_finding_ids": ["finding-404"]}) == ()
+
+
+def test_probable_cause_accepts_an_empty_fragment():
+    assert _cause_errors({}) == ()
+
+
+@pytest.mark.parametrize("field", _CAUSE_FIELDS)
+def test_probable_cause_accepts_a_single_field(field):
+    value = ["finding-001"] if field == "supporting_finding_ids" else "Texte."
+    assert _cause_errors({field: value}) == ()
+
+
+def test_probable_cause_rejects_an_unknown_field():
+    errors = _cause_errors({"statement": "Texte.", "certitude": "haute"})
+    assert len(errors) == 1
+    assert "certitude" in errors[0]
+
+
+def test_probable_cause_rejects_a_non_object_fragment():
+    errors = _cause_errors("Cause probable libre.")
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{C_013}: $: ")
+
+
+def test_probable_cause_leaves_the_confidence_vocabulary_open():
+    # Même raison que `status` sur C-011 : la table du renderer est de la
+    # présentation, et n'atteste aucun vocabulaire (ADR-0010).
+    assert _cause_errors({"confidence": "totalement_inventé"}) == ()
+
+
+def test_probable_cause_example_covers_every_field():
+    example = adc_contracts.load_json(adc_contracts.example_path(C_013))
+    assert set(example) == set(_CAUSE_FIELDS)

@@ -151,7 +151,7 @@ def test_mandatory_block_without_source_is_diagnosed_not_fabricated(tmp_path):
 
     assert not any(instance == "probable-cause" for _, instance in blocks)  # rien de fabriqué
     assert any(
-        "cardinalité non respectée: narrative :: 1 occurrence(s) au minimum, 0 obtenue(s)" == d
+        "cardinalité non respectée: C-013-probable-cause :: 1 occurrence(s) au minimum, 0 obtenue(s)" == d
         for d in diagnostics
     )
 
@@ -189,10 +189,12 @@ def test_unknown_block_is_diagnosed_not_silently_dropped(tmp_path):
 def test_narrative_blocks_are_all_supported():
     composed = compose_document(_data())
     narratives = [c.instance_id for c in composed.components if c.component_id == "narrative"]
-    # `incident-context` a quitté le marqueur en devenant un composant
-    # (ADR-0013) : il reste composé, à sa place, sous sa nouvelle identité.
-    assert narratives == ["probable-cause", "conclusion"]
+    # Le marqueur ne subsiste que pour `conclusion`, seul bloc dont le statut
+    # reste à décider (ADR-0013, D2). Les trois autres sont composés à la même
+    # place, sous leur identité de composant.
+    assert narratives == ["conclusion"]
     assert not any("narrative" in d for d in composed.diagnostics)
-    assert [c.component_id for c in composed.components if c.instance_id == "incident-context"] == [
-        "C-011-incident-context"
-    ]
+    promoted = {c.instance_id: c.component_id for c in composed.components}
+    assert promoted["incident-context"] == "C-011-incident-context"
+    assert promoted["probable-cause"] == "C-013-probable-cause"
+    assert any(c.component_id == "C-012-investigation" for c in composed.components)

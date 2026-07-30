@@ -1,0 +1,5 @@
+{
+  "statement": "La contention observée provient de la vérification d'intégrité lancée pendant la fenêtre de production.\n\nLes attentes disparaissent dès la fin du contrôle.",
+  "confidence": "unknown",
+  "supporting_finding_ids": ["finding-001"]
+}
