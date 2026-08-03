@@ -207,3 +207,46 @@ def test_the_ui_fetches_nothing_but_the_snapshot(path):
     code = _code(path)
     for elsewhere in ("XMLHttpRequest", "WebSocket", "importScripts", "navigator.sendBeacon"):
         assert elsewhere not in code, f"{path.name} : seconde source de données ({elsewhere})"
+
+
+@pytest.mark.parametrize("path", UI, ids=lambda p: p.name)
+def test_the_ui_decomposes_no_path(path):
+    """Un chemin se construit en descendant, il ne se découpe jamais.
+
+    L'arbre de la source produit `$`, `$.bloc`, `$.bloc[0].champ` en descendant
+    la structure observée ; la navigation croisée compare ensuite ces chaînes
+    par égalité. Découper un chemin reçu reviendrait à reconstruire l'arbre
+    qu'une autre couche connaît — et cette reconstruction serait fausse le jour
+    où la syntaxe change.
+    """
+    code = _code(path)
+    for decomposition in (".split(", ".match(", ".exec(", ".substring(", ".substr(",
+                          ".slice(", "RegExp", "new RegExp"):
+        assert decomposition not in code, f"{path.name} : chemin décomposé ({decomposition})"
+
+
+@pytest.mark.parametrize("path", UI, ids=lambda p: p.name)
+def test_the_ui_persists_no_selection(path):
+    """La sélection est un état d'affichage : un rechargement doit la perdre.
+
+    La persister en ferait un état applicatif, donc quelque chose qu'il
+    faudrait un jour synchroniser, migrer et arbitrer.
+    """
+    code = _code(path)
+    for store in ("localStorage", "sessionStorage", "indexedDB", "document.cookie", "history.pushState"):
+        assert store not in code, f"{path.name} : sélection persistée ({store})"
+
+
+def test_the_snapshot_model_carries_no_selection():
+    # Le modèle Python ignore jusqu'à l'existence d'une sélection.
+    from adc_workbench.snapshot import WorkbenchSnapshot
+
+    fields = set(WorkbenchSnapshot.__dataclass_fields__)
+    assert not {field for field in fields if "select" in field or "focus" in field}
+
+
+@pytest.mark.parametrize("path", UI, ids=lambda p: p.name)
+def test_the_ui_reaches_no_endpoint_but_the_snapshot(path):
+    # Une seule origine de données, et elle est nommée une seule fois.
+    code = _code(path)
+    assert code.count("fetch(") == code.count('fetch("/snapshot.json")')

@@ -166,7 +166,15 @@ body {
   overflow-wrap: anywhere;
 }
 .row:hover { background: #20252e; }
+/* Sélection primaire : l'élément cliqué. Filet plein et fond marqué. */
 .row.selected { background: var(--select); border-left-color: var(--accent); }
+/* Mise en évidence liée : rattachée par une relation explicite. Filet
+   pointillé et fond discret — la forme distingue, pas seulement la teinte. */
+.row.linked {
+  background: #1f2a35;
+  border-left-color: var(--dim);
+  border-left-style: dashed;
+}
 
 .mono { font-family: var(--mono); }
 .dim { color: var(--dim); }
@@ -215,7 +223,14 @@ pre {
   padding: 1px 10px 1px 0;
   overflow-wrap: anywhere;
 }
-.node > .entry.selected { background: var(--select); }
+.node > .entry.selected,
+.node > summary.selected,
+details > summary.selected { background: var(--select); outline: 1px solid var(--accent); }
+.node > .entry.linked,
+details > summary.linked {
+  background: #1f2a35;
+  outline: 1px dashed var(--dim);
+}
 .key { color: var(--accent); font-family: var(--mono); }
 .value { font-family: var(--mono); }
 .value.string { color: #b6d18a; }
@@ -223,3 +238,20 @@ pre {
 .value.boolean, .value.null { color: var(--composition); }
 details > summary { cursor: pointer; font-family: var(--mono); color: var(--accent); }
 details > summary::marker { color: var(--dim); }
+
+/* --- Chemin canonique du nœud sélectionné ------------------------------- */
+
+#selected-path {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  font-size: 11.5px;
+  max-width: 52ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+#selected-path.none { color: var(--dim); font-style: italic; }
