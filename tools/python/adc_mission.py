@@ -56,6 +56,10 @@ CLIENT_FIELDS: dict[str, str] = {
     "client": "name",
 }
 
+# Noeud par lequel l'atelier déclare ses propres répertoires et le rôle qu'il
+# leur donne. Il ne traverse pas le pont — il décrit l'atelier, pas le rapport.
+DIRECTORIES_FIELD = "repertoires"
+
 
 def metadata_path(mission: Path) -> Path:
     return Path(mission) / METADATA_FILE
@@ -117,3 +121,30 @@ def to_source(metadata: dict[str, Any]) -> dict[str, Any]:
 def mission_source(mission: Path) -> dict[str, Any]:
     """Source contractuelle d'une mission, lue depuis son `metadata.yml`."""
     return to_source(load_metadata(mission))
+
+
+def declared_directories(metadata: dict[str, Any]) -> dict[str, str]:
+    """Répertoires que l'atelier déclare, et le rôle qu'il leur donne.
+
+    Ces clés n'ont aucune contrepartie contractuelle et ne traversent pas le pont
+    (ADR-0011) : elles décrivent l'atelier, pas le rapport. Les exposer n'est
+    donc pas une traduction — c'est laisser lire ce que la mission déclare
+    d'elle-même, par le seul module du dépôt qui sait qu'un `metadata.yml`
+    existe.
+
+    Sans cette fonction, un observateur relirait le fichier avec sa propre
+    compréhension du vocabulaire d'atelier : un second lecteur, libre de dériver.
+
+    Les valeurs sont transportées telles quelles (R3) : aucun chemin n'est
+    normalisé, aucun rôle n'est déduit d'une convention de nommage. Une
+    déclaration inexploitable — absente, mal formée, non textuelle — ne produit
+    rien plutôt qu'une valeur inventée.
+    """
+    declared = metadata.get(DIRECTORIES_FIELD)
+    if not isinstance(declared, dict):
+        return {}
+    return {
+        str(role): value
+        for role, value in declared.items()
+        if isinstance(value, str) and value.strip()
+    }

@@ -260,3 +260,43 @@ def test_the_bridge_is_the_only_place_that_knows_the_workshop():
         assert "metadata.yml" not in content, path
         for workshop_key in ("titre", "auteur", "classification"):
             assert f'"{workshop_key}"' not in content, f"{path}: alias d'atelier"
+
+
+# --- Ce que l'atelier déclare de lui-même ----------------------------------
+#
+# Ces clés ne traversent pas le pont : elles décrivent l'atelier. Les exposer
+# évite qu'un observateur relise `metadata.yml` avec sa propre compréhension du
+# vocabulaire d'atelier — un second lecteur, libre de dériver.
+
+
+def test_the_declared_directories_are_read_from_the_workshop(mission):
+    metadata = adc_mission.load_metadata(mission)
+    assert adc_mission.declared_directories(metadata) == {
+        "rapport": "rapport",
+        "captures": "captures",
+        "annexes": "annexes",
+        "travail": "travail",
+    }
+
+
+def test_the_declared_directories_do_not_cross_the_bridge(mission):
+    # Exposer n'est pas traduire : la source contractuelle les ignore toujours.
+    source = adc_mission.mission_source(mission)
+    assert adc_mission.DIRECTORIES_FIELD not in source["report"]
+    assert adc_mission.DIRECTORIES_FIELD not in source
+
+
+@pytest.mark.parametrize(
+    "declared", [None, "travail", 42, [], {"rapport": 42}, {"rapport": ""}, {"rapport": "  "}]
+)
+def test_an_unusable_declaration_produces_nothing(declared):
+    # Ni valeur inventée, ni exception : ce que l'atelier ne déclare pas
+    # exploitablement n'est simplement pas exposé.
+    assert adc_mission.declared_directories({adc_mission.DIRECTORIES_FIELD: declared}) == {}
+
+
+def test_a_declared_path_is_carried_unchanged():
+    # Le pont ne normalise pas davantage un chemin qu'une date (R3).
+    declared = {"annexes": "  annexes/documents  "}
+    carried = adc_mission.declared_directories({adc_mission.DIRECTORIES_FIELD: declared})
+    assert carried == {"annexes": "  annexes/documents  "}
