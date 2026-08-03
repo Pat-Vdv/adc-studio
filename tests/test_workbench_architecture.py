@@ -21,7 +21,13 @@ import adc_contracts
 import adc_mission
 
 WORKBENCH = Path(__file__).resolve().parents[1] / "adc_workbench"
-SOURCES = sorted(WORKBENCH.glob("*.py"))
+PYTHON = sorted(WORKBENCH.glob("*.py"))
+UI = sorted((WORKBENCH / "ui").glob("*.*"))
+
+# L'interface est soumise aux mêmes interdits que la passe d'observation : c'est
+# elle qui est le plus exposée à la tentation de « juste recalculer un petit
+# quelque chose » pour combler un affichage.
+SOURCES = PYTHON + UI
 
 
 def _code(path: Path) -> str:
@@ -173,3 +179,31 @@ def test_the_workbench_declares_no_severity():
     # interdit, et que `status`, `level` et `result` ont déjà évitée.
     for path in SOURCES:
         assert "severity" not in _code(path), f"{path.name} : gravité inventée"
+
+
+# --- L'interface : mêmes interdits, et deux qui lui sont propres -----------
+
+
+def test_the_ui_has_sources_to_inspect():
+    assert UI, "aucune ressource d'interface trouvée"
+
+
+@pytest.mark.parametrize("path", UI, ids=lambda p: p.name)
+def test_the_ui_interprets_no_observed_content_as_markup(path):
+    """Le DOM est construit par `textContent`, jamais par du balisage.
+
+    C'est ce qui rend l'échappement structurel : une mission dont un champ
+    contient du HTML s'affiche comme du texte, sans qu'aucune précaution
+    ponctuelle n'ait à y penser.
+    """
+    code = _code(path)
+    for interpreted in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval("):
+        assert interpreted not in code, f"{path.name} : contenu interprété ({interpreted})"
+
+
+@pytest.mark.parametrize("path", UI, ids=lambda p: p.name)
+def test_the_ui_fetches_nothing_but_the_snapshot(path):
+    # Une seule origine de données : l'instantané servi localement.
+    code = _code(path)
+    for elsewhere in ("XMLHttpRequest", "WebSocket", "importScripts", "navigator.sendBeacon"):
+        assert elsewhere not in code, f"{path.name} : seconde source de données ({elsewhere})"
