@@ -87,7 +87,9 @@ def test_a_fresh_mission_is_composable_though_editorially_empty(tmp_path):
     d'entrée rend possible — incomplet n'est pas malformé (ADR-0009).
     """
     result = _run(_mission(tmp_path))
-    assert "Composants rendus : 4" in result.stdout
+    # Deux blocs seulement : ceux dont le fragment déclaré est la source
+    # entière, donc toujours présente. Tous les autres attendent leur nœud.
+    assert "Composants rendus : 2" in result.stdout
     assert "Le rapport est incomplet." in result.stdout
     assert "  • Findings" in result.stdout
 

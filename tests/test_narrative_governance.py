@@ -140,3 +140,59 @@ def test_an_empty_node_produces_no_cardinality_diagnostic():
     # porte l'occurrence que le profil attend, vide.
     data = {**_reference_source(), "incident_context": {}}
     assert [d for d in _resolution_diagnostics(data) if "cardinalité" in d] == []
+
+
+# --- La présence suit le fragment déclaré ---------------------------------
+#
+# Deux blocs uniques échappaient au test de présence — `executive-summary` et
+# `environment` — sans qu'aucune règle ne l'ait jamais dit. L'enquête n'a trouvé
+# ni ADR, ni test, ni justification : seulement un choix de préservation au
+# moment où le profil a pris la main sur l'ordre, contredit par le commit qui
+# l'introduisait. Deux régimes de présence coexistaient donc, dont un seul était
+# attesté.
+
+# Bloc unique -> nœud dont la source porte son fragment. La liste est écrite ici
+# pour que le test échoue si un bloc quittait ce régime en silence.
+NAMED_FRAGMENT_BLOCKS = (
+    ("executive-summary", "executive_summary"),
+    ("environment", "environment"),
+    ("incident-context", "incident_context"),
+    ("timeline", "timeline"),
+    ("probable-cause", "probable_cause"),
+    ("conclusion", "conclusion"),
+)
+
+ROOT_FRAGMENT_BLOCKS = ("cover", "identity")
+
+
+@pytest.mark.parametrize("instance_id,node", NAMED_FRAGMENT_BLOCKS)
+def test_a_named_fragment_absent_resolves_no_occurrence(instance_id, node):
+    data = {key: value for key, value in _reference_source().items() if key != node}
+    assert not any(block[1] == instance_id for block in _blocks(data))
+
+
+@pytest.mark.parametrize("instance_id,node", NAMED_FRAGMENT_BLOCKS)
+def test_a_named_fragment_present_but_empty_still_resolves(instance_id, node):
+    # G4 reste intact : vide n'est pas absent, et la nouvelle règle ne dit rien
+    # du contenu — seulement de la présence du nœud.
+    data = {**_reference_source(), node: {}}
+    assert any(block[1] == instance_id for block in _blocks(data))
+
+
+@pytest.mark.parametrize("instance_id", ROOT_FRAGMENT_BLOCKS)
+def test_a_root_fragment_block_is_always_resolved(instance_id):
+    """Leur fragment déclaré est la source entière, qui existe toujours.
+
+    Ce n'est pas une exception à la règle : c'est le seul cas où elle conclut à
+    une présence inconditionnelle.
+    """
+    assert any(block[1] == instance_id for block in _blocks({}))
+
+
+def test_no_single_block_escapes_the_rule():
+    # Aucun bloc unique ne doit être déclaré présent sans condition alors que
+    # son fragment porte un nom — c'est exactement l'écart corrigé.
+    unconditional = {
+        instance for instance, node in resolution._SINGLE_OCCURRENCE_SOURCES.items() if node is None
+    }
+    assert unconditional == set(ROOT_FRAGMENT_BLOCKS)

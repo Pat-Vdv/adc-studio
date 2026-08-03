@@ -12,6 +12,13 @@ Le partage des responsabilités est strict :
 Aucune occurrence n'est fabriquée pour satisfaire une cardinalité : un écart
 produit un diagnostic, jamais un bloc vide.
 
+**La présence d'un bloc suit celle de son fragment déclaré.** Un fragment racine
+— la source entière — est toujours présent ; un fragment nommé ne l'est que si
+la source porte son nœud. Cette règle vaut pour tous les blocs uniques, sans
+exception : deux d'entre eux y échappaient par héritage, faute qu'une règle ait
+jamais été écrite, ce qui donnait deux régimes de présence dont un seul était
+attesté.
+
 La présence d'un nœud est **structurelle**, jamais booléenne (ADR-0012, G4) : un
 nœud présent mais vide est présent, et porte l'occurrence que le profil attend.
 Le juger par la véracité de sa valeur confondrait cinq états — clé absente,
@@ -28,14 +35,17 @@ from typing import Any
 
 from .contract import Profile, ProfileEntry
 
-# Bloc à occurrence unique -> clé source dont dépend sa présence.
-# `None` : le bloc est présent dès que le profil le déclare.
+# Bloc à occurrence unique -> nœud source dont dépend sa présence.
+#
+# `None` désigne le **fragment racine** : le bloc consomme la source entière,
+# qui est toujours présente. Ce n'est pas une exception à la règle, c'en est
+# l'application — la présence d'un bloc suit celle de son fragment déclaré.
 _SINGLE_OCCURRENCE_SOURCES: dict[str, str | None] = {
     "cover": None,
     "identity": None,
-    "executive-summary": None,
+    "executive-summary": "executive_summary",
     "incident-context": "incident_context",
-    "environment": None,
+    "environment": "environment",
     "timeline": "timeline",
     "probable-cause": "probable_cause",
     "conclusion": "conclusion",
