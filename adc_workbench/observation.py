@@ -102,6 +102,14 @@ def observe(source: Any, profile: Profile | None = None) -> WorkbenchSnapshot:
     profile = profile or incident_profile()
     notes: list[str] = []
 
+    # La résolution est observée d'abord, et pour elle-même : elle ne dépend pas
+    # de la frontière, et reste donc lisible quand la composition a refusé.
+    if isinstance(source, dict):
+        blocks, resolution_diagnostics = resolve(source, profile)
+    else:
+        blocks, resolution_diagnostics = (), ()
+        notes.append("source non observable par la résolution : objet attendu à la racine")
+
     document = None
     contract_diagnostics: tuple[DiagnosticView, ...] = ()
     try:
@@ -119,6 +127,9 @@ def observe(source: Any, profile: Profile | None = None) -> WorkbenchSnapshot:
             metadata=dict(composed.metadata),
         )
         source_diagnostics = _diagnostics(composed.source_diagnostics)
+        # L'IR porte déjà les diagnostics de résolution : les reprendre depuis la
+        # résolution en ferait une seconde copie des mêmes faits, que l'écran
+        # afficherait deux fois.
         composition_diagnostics = tuple(composed.diagnostics)
         components = tuple(
             ComponentView(
@@ -132,15 +143,10 @@ def observe(source: Any, profile: Profile | None = None) -> WorkbenchSnapshot:
         # Le validateur métier ne dépend pas de la frontière : il conclut sur une
         # source que la composition a refusée.
         source_diagnostics = _diagnostics(validate(source))
-        composition_diagnostics = ()
+        # Rien n'a été composé : ce que la résolution avait à dire n'est porté
+        # par aucun IR, et serait perdu si l'observation ne le reprenait pas.
+        composition_diagnostics = tuple(resolution_diagnostics)
         components = ()
-
-    if isinstance(source, dict):
-        blocks, resolution_notes = resolve(source, profile)
-        notes += resolution_notes
-    else:
-        blocks = ()
-        notes.append("source non observable par la résolution : objet attendu à la racine")
 
     instances = {(c.component_id, c.instance_id) for c in components}
     resolution = tuple(

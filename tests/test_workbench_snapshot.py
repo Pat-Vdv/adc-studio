@@ -312,3 +312,37 @@ def test_observing_a_mission_still_writes_nothing(mission):
 
 def test_two_observations_of_a_mission_are_identical(mission):
     assert observe_mission(mission) == observe_mission(mission)
+
+
+# --- Un fait, une place ----------------------------------------------------
+
+
+def test_the_resolution_diagnostics_are_not_carried_twice(tmp_path):
+    """Les mêmes chaînes ne doivent pas figurer dans deux familles.
+
+    Défaut relevé à l'inspection visuelle : l'écran affichait deux fois les
+    mêmes cardinalités non respectées, sous « composition » et sous « notes ».
+    L'IR portant déjà les diagnostics de résolution, les reprendre depuis la
+    résolution en faisait une seconde copie des mêmes faits.
+    """
+    (tmp_path / "metadata.yml").write_text('titre: "Mission nue"\n', encoding="utf-8")
+    snapshot = observe_mission(tmp_path)
+    assert snapshot.composition_diagnostics, "les cardinalités non tenues restent visibles"
+    assert not set(snapshot.composition_diagnostics) & set(snapshot.observation_notes)
+
+
+def test_observation_notes_carry_only_what_the_pass_itself_could_not_do():
+    # Une note d'observation décrit une limite de la passe, jamais un verdict
+    # du moteur.
+    assert observe(_source()).observation_notes == ()
+
+
+def test_a_refused_source_still_carries_its_resolution_diagnostics(tmp_path):
+    # Sans document, ce que la résolution a constaté n'est porté par aucun IR :
+    # l'observation le reprend, sinon il serait perdu au moment où il compte.
+    source = _source()
+    source["findings"][0]["severity"] = "urgent"
+    del source["conclusion"]
+    snapshot = observe(source)
+    assert snapshot.document is None
+    assert any("cardinalité" in diagnostic for diagnostic in snapshot.composition_diagnostics)

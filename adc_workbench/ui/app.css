@@ -67,7 +67,12 @@ body {
 #banner-facts dd {
   margin: 0;
   font-family: var(--mono);
-  overflow-wrap: anywhere;
+  /* Une valeur longue est bornée ici plutôt que de repousser les panneaux ;
+     elle reste entière au survol. */
+  max-width: 48ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .flag-refused { color: var(--contract); font-weight: 600; }

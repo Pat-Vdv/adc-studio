@@ -50,7 +50,12 @@ function group(title, count, kind) {
 function fact(term, value, className) {
   const wrap = el("div", "fact");
   wrap.appendChild(el("dt", null, term));
-  wrap.appendChild(el("dd", className, value));
+  const definition = el("dd", className, value);
+  // Une valeur longue — un chemin de mission — est bornée visuellement pour ne
+  // pas repousser les panneaux. Elle reste intégralement disponible au survol :
+  // elle n'est ni tronquée ni réécrite dans l'instantané.
+  definition.title = String(value);
+  wrap.appendChild(definition);
   return wrap;
 }
 
@@ -98,13 +103,15 @@ function renderMission(snapshot) {
 
     const meta = el("div", "meta");
     meta.appendChild(el("span", null, artefact.kind));
-    meta.appendChild(el("span", null, artefact.size === null ? "—" : `${artefact.size} o`));
+    // Un répertoire n'a pas de taille : ne rien afficher plutôt qu'un tiret,
+    // qui se lisait comme une valeur entre la nature et le rôle.
+    if (artefact.size !== null) meta.appendChild(el("span", null, `${artefact.size} o`));
     // Absence de rôle rendue comme telle : aucune propagation n'est ajoutée.
     meta.appendChild(
       artefact.role === null ? el("span", "none", "sans rôle déclaré") : el("span", null, artefact.role)
     );
     meta.appendChild(el("span", "tag" + (artefact.content !== null ? " on" : ""),
-      artefact.content !== null ? "contenu chargé" : "contenu non chargé"));
+      artefact.content !== null ? "chargé" : "non chargé"));
     if (artefact.consumed) meta.appendChild(el("span", "tag on", "lu par l'observation"));
     row.appendChild(meta);
 
