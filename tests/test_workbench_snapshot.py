@@ -192,3 +192,123 @@ def test_observing_a_mission_writes_nothing(tmp_path):
 def test_a_missing_mission_is_refused_by_its_bridge(tmp_path):
     with pytest.raises(FileNotFoundError):
         observe_mission(tmp_path)
+
+
+# --- Le panneau Mission ----------------------------------------------------
+#
+# Il répond à une seule question : quels artefacts d'atelier ont participé — ou
+# pourraient participer — à cette observation ? Trois notions distinctes le
+# permettent : l'inventaire dit ce qui existe, le contenu n'est chargé que pour
+# ce qu'une observation exploite, et le rôle vient de ce que la mission déclare
+# d'elle-même.
+
+MISSION_METADATA = """\
+client: "Soc01"
+titre: "Blocage SQL Server"
+auteur: "A.D.C. srl"
+repertoires:
+  rapport: "rapport"
+  captures: "captures"
+  annexes: "annexes"
+  travail: "travail"
+"""
+
+
+@pytest.fixture
+def mission(tmp_path: Path) -> Path:
+    """Un atelier conforme à ce que `New-ADCClientReport` produit."""
+    for directory in ("rapport/versions", "captures", "annexes/logs", "travail"):
+        (tmp_path / directory).mkdir(parents=True)
+    (tmp_path / "metadata.yml").write_text(MISSION_METADATA, encoding="utf-8")
+    (tmp_path / "travail" / "brouillon.md").write_text("# Brouillon\n\n## 1. Contexte\n", "utf-8")
+    (tmp_path / "travail" / "notes.md").write_text("# Notes\n", encoding="utf-8")
+    (tmp_path / "captures" / "ecran.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 64)
+    (tmp_path / "rapport" / "rapport.docx").write_bytes(b"PK\x03\x04" + b"\x00" * 32)
+    return tmp_path
+
+
+def _artefact(snapshot, path: str):
+    return next(a for a in snapshot.mission.artefacts if a.path == path)
+
+
+def test_the_mission_is_inventoried(mission):
+    snapshot = observe_mission(mission)
+    paths = [a.path for a in snapshot.mission.artefacts]
+    assert paths == sorted(paths), "l'ordre doit être stable"
+    assert "captures/ecran.png" in paths
+    assert "rapport/versions" in paths
+    assert _artefact(snapshot, "captures").kind == "directory"
+    assert _artefact(snapshot, "captures/ecran.png").size == 72
+
+
+def test_only_exploitable_text_carries_its_content(mission):
+    snapshot = observe_mission(mission)
+    assert _artefact(snapshot, "travail/brouillon.md").content.startswith("# Brouillon")
+    assert _artefact(snapshot, "metadata.yml").content is not None
+    # Un livrable ou une capture entre à l'inventaire, jamais dans l'instantané.
+    assert _artefact(snapshot, "captures/ecran.png").content is None
+    assert _artefact(snapshot, "rapport/rapport.docx").content is None
+    assert _artefact(snapshot, "captures").content is None
+
+
+def test_a_role_comes_from_the_mission_never_from_a_guess(mission):
+    snapshot = observe_mission(mission)
+    assert _artefact(snapshot, "travail").role == "travail"
+    assert _artefact(snapshot, "rapport").role == "rapport"
+    # Rien ne déclare qu'un rôle se propage à ce qu'un répertoire contient.
+    assert _artefact(snapshot, "travail/brouillon.md").role is None
+    assert _artefact(snapshot, "rapport/versions").role is None
+
+
+def test_an_undeclared_directory_has_no_role(tmp_path):
+    (tmp_path / "travail").mkdir()
+    (tmp_path / "metadata.yml").write_text('titre: "Sans répertoires"\n', encoding="utf-8")
+    snapshot = observe_mission(tmp_path)
+    assert _artefact(snapshot, "travail").role is None
+
+
+def test_only_what_a_producer_read_is_marked_consumed(mission):
+    # Aujourd'hui, seul le pont lit un artefact d'atelier.
+    snapshot = observe_mission(mission)
+    assert [a.path for a in snapshot.mission.artefacts if a.consumed] == ["metadata.yml"]
+
+
+def test_the_mission_panel_interprets_no_workshop_vocabulary(mission):
+    """Le fichier brut est montré ; sa lecture qui fait autorité est celle du pont.
+
+    La correspondance « titre -> report.title » devra être produite par le
+    propriétaire de la traduction, jamais devinée ici (ADR-0011).
+    """
+    snapshot = observe_mission(mission)
+    assert snapshot.document.title == "Blocage SQL Server"  # par le pont
+    artefact = _artefact(snapshot, "metadata.yml")
+    assert artefact.role is None, "aucun champ du fichier n'est interprété"
+
+
+def test_a_text_file_beyond_the_threshold_is_inventoried_not_loaded(tmp_path):
+    from adc_workbench.observation import TEXT_CONTENT_MAX_BYTES
+
+    (tmp_path / "metadata.yml").write_text('titre: "Volumineux"\n', encoding="utf-8")
+    big = tmp_path / "gros.md"
+    big.write_text("x" * (TEXT_CONTENT_MAX_BYTES + 1), encoding="utf-8")
+    artefact = _artefact(observe_mission(tmp_path), "gros.md")
+    assert artefact.content is None
+    assert artefact.size == TEXT_CONTENT_MAX_BYTES + 1  # la taille dit pourquoi
+
+
+def test_an_unreadable_text_file_does_not_break_the_observation(tmp_path):
+    (tmp_path / "metadata.yml").write_text('titre: "Illisible"\n', encoding="utf-8")
+    (tmp_path / "casse.md").write_bytes(b"\xff\xfe\x00 texte invalide")
+    artefact = _artefact(observe_mission(tmp_path), "casse.md")
+    assert artefact.content is None
+    assert artefact.kind == "file"
+
+
+def test_observing_a_mission_still_writes_nothing(mission):
+    before = sorted(p.name for p in mission.iterdir())
+    observe_mission(mission)
+    assert sorted(p.name for p in mission.iterdir()) == before
+
+
+def test_two_observations_of_a_mission_are_identical(mission):
+    assert observe_mission(mission) == observe_mission(mission)

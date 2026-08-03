@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 import adc_contracts
+import adc_mission
 
 WORKBENCH = Path(__file__).resolve().parents[1] / "adc_workbench"
 SOURCES = sorted(WORKBENCH.glob("*.py"))
@@ -117,6 +118,29 @@ def test_the_workbench_hardcodes_no_source_node(node):
         code = _code(path)
         assert f'"{node}"' not in code, f"{path.name} : nœud codé en dur ({node})"
         assert f"'{node}'" not in code
+
+
+@pytest.mark.parametrize(
+    "key",
+    sorted(
+        {*adc_mission.REPORT_FIELDS, *adc_mission.CLIENT_FIELDS, adc_mission.DIRECTORIES_FIELD}
+    ),
+)
+def test_the_workbench_interprets_no_workshop_vocabulary(key):
+    """Le pont est le seul lecteur du vocabulaire d'atelier (ADR-0011).
+
+    Le panneau Mission montre le fichier brut ; il ne lit pas `titre` pour en
+    déduire quoi que ce soit. Un second lecteur de ce vocabulaire dériverait du
+    premier sans que rien ne le dise — et la correspondance « atelier ->
+    canonique » cesserait d'avoir un propriétaire unique.
+
+    La liste interdite est dérivée du pont lui-même : une clé nouvelle y entre
+    seule.
+    """
+    for path in SOURCES:
+        code = _code(path)
+        assert f'"{key}"' not in code, f"{path.name} : vocabulaire d'atelier ({key})"
+        assert f"'{key}'" not in code
 
 
 # --- W3 : pas de reconstruction -------------------------------------------

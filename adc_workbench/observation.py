@@ -20,6 +20,7 @@ encore — l'audit la range parmi les instrumentations à concevoir.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -34,9 +35,22 @@ from .snapshot import (
     ContractView,
     DiagnosticView,
     DocumentView,
+    MissionArtefact,
+    MissionView,
     ResolvedBlock,
     WorkbenchSnapshot,
 )
+
+# Extensions dont le contenu est chargé dans l'instantané. Le critère est la
+# nature du fichier, jamais son emplacement : décider par le répertoire
+# obligerait à interpréter le vocabulaire d'atelier, dont le pont est le seul
+# lecteur légitime (ADR-0011).
+TEXT_SUFFIXES = frozenset({".md", ".txt"})
+
+# Au-delà, le contenu n'est pas chargé et la taille dit pourquoi. Ce seuil est
+# une politique d'observation — la consommation de l'outil — et non une règle
+# métier : il appartient donc au Workbench.
+TEXT_CONTENT_MAX_BYTES = 512 * 1024
 
 
 def _diagnostics(raw: Any) -> tuple[DiagnosticView, ...]:
@@ -152,10 +166,66 @@ def observe(source: Any, profile: Profile | None = None) -> WorkbenchSnapshot:
     )
 
 
+def _text(path: Path) -> str | None:
+    """Contenu d'un fichier texte exploitable, ou rien.
+
+    Un fichier illisible ne fait pas échouer l'observation : l'inventaire dit
+    déjà qu'il existe, et c'est ce que le panneau doit montrer.
+    """
+    try:
+        return path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _artefact(path: Path, mission: Path, roles: dict[str, str], consumed: Path) -> MissionArtefact:
+    relative = path.relative_to(mission)
+    directory = path.is_dir()
+    loadable = (
+        not directory
+        and (path.suffix in TEXT_SUFFIXES or path == consumed)
+        and path.stat().st_size <= TEXT_CONTENT_MAX_BYTES
+    )
+    return MissionArtefact(
+        path=relative.as_posix(),
+        kind="directory" if directory else "file",
+        size=None if directory else path.stat().st_size,
+        role=roles.get(relative.as_posix()),
+        content=_text(path) if loadable else None,
+        consumed=path == consumed,
+    )
+
+
+def _mission_view(mission: Path, metadata: dict[str, Any]) -> MissionView:
+    """L'atelier inventorié, dans un ordre stable.
+
+    Les rôles viennent de ce que la mission déclare, par le module qui en est
+    propriétaire : les relire ici en ferait un second lecteur du vocabulaire
+    d'atelier, libre de dériver du premier.
+    """
+    roles = {
+        declared: role for role, declared in adc_mission.declared_directories(metadata).items()
+    }
+    consumed = adc_mission.metadata_path(mission)
+    return MissionView(
+        path=str(mission),
+        artefacts=tuple(
+            _artefact(path, mission, roles, consumed)
+            for path in sorted(mission.rglob("*"), key=lambda p: p.as_posix())
+        ),
+    )
+
+
 def observe_mission(mission: Path, profile: Profile | None = None) -> WorkbenchSnapshot:
     """Instantané d'une mission, traduite par son pont (ADR-0011).
 
     La source contractuelle n'est pas matérialisée : elle existe le temps de
     l'observation, comme le pont l'exige (R5).
+
+    L'instantané qui en résulte porte le contenu du rapport d'un client : il a la
+    sensibilité de la mission observée (ADR-0014, W6).
     """
-    return observe(adc_mission.mission_source(mission), profile)
+    mission = Path(mission)
+    metadata = adc_mission.load_metadata(mission)
+    snapshot = observe(adc_mission.to_source(metadata), profile)
+    return replace(snapshot, mission=_mission_view(mission, metadata))

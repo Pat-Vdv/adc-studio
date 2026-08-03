@@ -103,6 +103,47 @@ class DocumentView:
 
 
 @dataclass(frozen=True)
+class MissionArtefact:
+    """Un artefact d'atelier, inventorié — et parfois lu.
+
+    Trois notions distinctes, qu'il ne faut pas confondre :
+
+    - l'**inventaire** — chemin, nature, taille — dit ce qui existe ;
+    - le **contenu** n'est chargé que pour ce qu'une observation peut exploiter :
+      il reste `None` partout ailleurs. Une capture ou un livrable n'entre pas
+      dans l'instantané au motif qu'il existe ;
+    - le **rôle** vient de ce que la mission déclare d'elle-même. Il n'est porté
+      que par les répertoires qu'elle nomme : rien ne déclare qu'un rôle se
+      propage à ce qu'ils contiennent, et l'y propager serait une heuristique.
+
+    `consumed` dit qu'un producteur a réellement lu cet artefact pour produire
+    l'instantané. C'est un fait, pas une intention : il répond à « qu'est-ce qui
+    a participé à cette observation ? », sans rien dire de ce qui pourrait y
+    participer un jour.
+    """
+
+    path: str
+    kind: str
+    size: int | None = None
+    role: str | None = None
+    content: str | None = None
+    consumed: bool = False
+
+
+@dataclass(frozen=True)
+class MissionView:
+    """L'atelier tel qu'il se présente sur le disque, au moment de l'observation.
+
+    Cette vue montre le fichier de métadonnées **brut**. Elle n'en interprète
+    aucun champ : la seule lecture qui fasse autorité sur ce vocabulaire est
+    celle du pont, et son résultat est la source canonique de l'instantané.
+    """
+
+    path: str
+    artefacts: tuple[MissionArtefact, ...] = ()
+
+
+@dataclass(frozen=True)
 class WorkbenchSnapshot:
     """État observé d'une source, à un instant, par une passe unique.
 
@@ -121,5 +162,6 @@ class WorkbenchSnapshot:
     resolution: tuple[ResolvedBlock, ...] = ()
     components: tuple[ComponentView, ...] = ()
     document: DocumentView | None = None
+    mission: MissionView | None = None
     # Ce que la passe n'a pas pu observer, et pourquoi.
     observation_notes: tuple[str, ...] = field(default_factory=tuple)
