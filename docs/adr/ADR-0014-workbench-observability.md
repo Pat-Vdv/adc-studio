@@ -54,6 +54,18 @@ Cette règle ne gouverne que ce qui a vocation à être vu. Un changement intern
 performance, correction sans effet observable — n'entre pas dans son périmètre : l'y
 soumettre transformerait une garantie d'observabilité en péage arbitraire.
 
+**W6 — Un instantané a la sensibilité de la mission observée.**
+Un instantané porte le contenu du rapport d'un client. Il est donc, à tout instant, une
+donnée de même nature que la mission dont il dérive.
+
+La qualification ne dépend pas de sa durée de vie : un instantané en mémoire porte déjà ce
+contenu, et la persistance ne fait qu'en allonger l'existence. Attendre qu'une commande
+d'écriture existe pour poser la règle reviendrait à la poser trop tard.
+
+Il s'ensuit, immédiatement : aucune télémétrie du contenu, aucun journal qui le reproduise,
+aucun cache implicite, aucune copie vers le dépôt. Une persistance ultérieure sera une action
+explicite, et devra préserver cette qualification.
+
 ## Portée
 
 Cette ADR gouverne le **rapport** entre le Workbench et les couches qu'il observe. Elle ne
@@ -72,7 +84,9 @@ Deviennent interdits, sans révision de cette ADR :
   vocabulaire inventés par l'interface ;
 - recalculer dans l'interface un ordre, une présence, une cardinalité ou une résolution ;
 - traduire une valeur canonique de l'IR : le français appartient au renderer (ADR-0009, I5) ;
-- faire écrire au Workbench autre chose que ce qu'une commande explicite lui demande.
+- faire écrire au Workbench autre chose que ce qu'une commande explicite lui demande ;
+- journaliser, mettre en cache, transmettre ou copier dans le dépôt le contenu d'un
+  instantané.
 
 Restent ouverts :
 
