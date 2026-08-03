@@ -109,6 +109,29 @@ composant. Valider une source entière l'exige explicite.
 Cette localisation est une **table**, pas une convention : le nom du nœud ne se
 déduit pas de l'identifiant du composant. C-007 Decision lit `actions_taken`.
 
+### Propriétaire de la localisation
+
+> La localisation des fragments est une **donnée structurelle neutre**. Elle ne
+> relève ni de la validation des contrats, ni de la composition. Elle est portée
+> par un **registre neutre**, consommé par ces couches sans qu'aucune ne la
+> possède.
+
+La table a d'abord vécu dans le module de validation, parce qu'il fut son premier
+consommateur. Ils n'ont pourtant pas la même nature : valider est une règle, situer
+est un fait. Quatre couches ont désormais besoin de ce fait — les contrats, la
+résolution, la composition et l'observation — et l'héberger chez l'une d'elles
+oblige les trois autres à en dépendre par un chemin qui ne dit pas ce qu'il
+transporte.
+
+Conséquence directe : une couche qui a besoin de **situer** un fragment n'a plus
+à traverser celle qui le **valide**. Un verrou qui interdirait ce trajet en
+énumérant des fonctions défendues traiterait le symptôme ; c'est la propriété du
+fait qui était mal placée.
+
+Le registre ne porte que ce que cette ADR décrit — où un fragment se lit, comment
+il se lit, et sa nature. Il n'est pas un annuaire général : tout ce qu'il
+gagnerait au-delà appartiendrait à une autre couche.
+
 | Nature | Ce qui est validé | Exemple |
 |---|---|---|
 | nœud | le nœud lui-même | C-003 → `executive_summary` |
