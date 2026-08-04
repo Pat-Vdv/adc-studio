@@ -1,5 +1,67 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-009 Environment — fragment source",
+  "description": "Forme du noeud `environment` de la source. Les caractéristiques sont reprises telles quelles par le builder : aucune conversion d'unité, aucune valeur déduite.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "server_name": {
+      "type": "string",
+      "description": "Nom du serveur hébergeant l'instance."
+    },
+    "operating_system": {
+      "type": "string",
+      "description": "Système d'exploitation et version."
+    },
+    "database_engine": {
+      "type": "string",
+      "description": "Moteur de base de données et édition."
+    },
+    "database_engine_version": {
+      "type": "string",
+      "description": "Version précise du moteur, sous la forme publiée par l'éditeur."
+    },
+    "instance": {
+      "type": "string",
+      "description": "Nom de l'instance."
+    },
+    "primary_database": {
+      "type": "string",
+      "description": "Base principale concernée."
+    },
+    "collation": {
+      "type": "string",
+      "description": "Collation déclarée."
+    },
+    "cpu_logical_count": {
+      "type": "integer",
+      "description": "Nombre de processeurs logiques : un décompte, donc entier."
+    },
+    "memory_gb": {
+      "type": "number",
+      "description": "Mémoire en gigaoctets. Quantité, non décompte : une valeur fractionnaire reste admise."
+    },
+    "storage": {
+      "type": "array",
+      "description": "Volumes de stockage, dans l'ordre où la source les déclare.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "volume": {
+            "type": "string",
+            "description": "Identifiant du volume, tel qu'il apparaît sur le système."
+          },
+          "role": {
+            "type": "string",
+            "description": "Usage du volume."
+          },
+          "allocation_unit_kb": {
+            "type": ["integer", "null"],
+            "description": "Unité d'allocation en kilo-octets ; null lorsqu'elle n'a pas été relevée."
+          }
+        }
+      }
+    }
+  }
 }

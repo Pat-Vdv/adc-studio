@@ -1,4 +1,6 @@
 {
-  "component_id":"",
-  "component_version":"1.0"
+  "id": "decision-001",
+  "title": "Sécurisation préalable par sauvegarde",
+  "description": "Sauvegardes complètes créées et vérifiées avant toute opération sensible sur la base principale.",
+  "status": "completed"
 }

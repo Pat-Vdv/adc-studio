@@ -1,5 +1,38 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-010 Evidence — fragment source",
+  "description": "Forme d'une occurrence de la collection `evidence`. L'unicité des identifiants et la résolubilité des références qui pointent vers cette preuve relèvent du validateur.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant de la preuve, stable dans le document. Requis à double titre : le validateur l'exige déjà pour cette collection, et le moteur instancie l'occurrence par cet identifiant."
+    },
+    "title": {
+      "type": "string",
+      "description": "Intitulé de la preuve. C'est ce titre que le rendu affiche lorsqu'un constat référence cette preuve ; sans lui, la référence est diagnostiquée et n'apparaît pas dans le document."
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Nature de la preuve. Volontairement non contraint par un `enum` : aucun vocabulaire n'est fermé pour ce champ, ni par le validateur ni par une règle documentée. Que la donnée de référence porte aujourd'hui « technical_observation » ne ferme pas la liste."
+    },
+    "source": {
+      "type": "string",
+      "description": "Origine de la preuve, telle que déclarée. Aucune forme imposée : ni vocabulaire fermé, ni convention de nommage."
+    },
+    "description": {
+      "type": "string",
+      "description": "Ce que la preuve établit, distinct de l'interprétation qui en est faite."
+    },
+    "content": {
+      "type": "string",
+      "description": "Synthèse ou renvoi vers l'annexe portant la preuve elle-même."
+    }
+  }
 }

@@ -1,1 +1,8 @@
 pytest>=8
+python-docx>=1.2
+pyyaml>=6
+jsonschema>=4
+
+# Validation navigateur du Workbench (P4). Le navigateur du système est
+# réutilisé : voir docs/architecture/workbench-browser-tests.md
+playwright>=1.40

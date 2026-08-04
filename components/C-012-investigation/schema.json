@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-012 Investigation — fragment source",
+  "description": "Forme d'une occurrence du noeud `investigations` de la source. Le schéma décrit une entrée ; l'ordre des investigations est celui de la source et relève de la composition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant de l'investigation, stable dans le document. Prérequis de consommation : le moteur instancie l'occurrence par cet identifiant, et une entrée qui n'en porte pas est absente du document (ADR-0010)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Intitulé de l'investigation. Non requis : son absence dégrade la restitution — l'en-tête perd son libellé — sans empêcher la consommation."
+    },
+    "description": {
+      "type": "string",
+      "description": "Ce qui a été cherché et comment. Les paragraphes sont séparés par une ligne vide ; le builder les découpe."
+    },
+    "result": {
+      "type": "string",
+      "description": "Résultat déclaré par la source. Aucun vocabulaire n'est fermé ici : aucune règle de domaine ne l'atteste, et le renderer restitue la valeur telle quelle, sans traduction."
+    }
+  }
+}

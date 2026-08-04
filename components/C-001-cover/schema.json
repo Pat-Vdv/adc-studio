@@ -1,5 +1,56 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-001 Cover — fragment source",
+  "description": "Fragment consommé par le builder de la couverture : les noeuds `report` et `client` de la racine, dont il ne lit qu'une partie des champs. Ces noeuds sont partagés avec C-002 Identity Page, qui en consomme d'autres : ni la racine ni les deux noeuds ne sont donc fermés, sans quoi ce contrat rejetterait des champs relevant d'un autre composant (ADR-0010). Le type de document n'y figure pas : il est posé par le builder, jamais lu dans la source.",
+  "type": "object",
+  "required": [
+    "report",
+    "client"
+  ],
+  "properties": {
+    "report": {
+      "type": "object",
+      "description": "Métadonnées éditoriales du rapport. Noeud requis : le validateur l'exige déjà à la racine de la source. Seuls les champs imprimés sur la couverture sont décrits ici ; les autres relèvent du contrat de C-002.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Titre du rapport, porté par la couverture. Non requis : son absence produit une couverture sans titre, ce qui dégrade la restitution sans empêcher la composition."
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Sous-titre, sous le titre. Absent, aucune ligne n'est rendue."
+        },
+        "reference": {
+          "type": "string",
+          "description": "Référence du document, telle qu'elle doit être imprimée."
+        },
+        "version": {
+          "type": "string",
+          "description": "Version du document. Chaîne : « 0.1-draft » est une écriture attestée, aucun format n'est imposé."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date du rapport. Aucun format n'est attesté : la valeur est reprise telle quelle par le rendu."
+        },
+        "author": {
+          "type": "string",
+          "description": "Auteur du rapport, personne ou entité."
+        },
+        "confidentiality": {
+          "type": "string",
+          "description": "Mention de confidentialité. Volontairement non contrainte par un `enum` : aucun vocabulaire n'est fermé pour ce champ, ni par le validateur ni par une règle documentée."
+        }
+      }
+    },
+    "client": {
+      "type": "object",
+      "description": "Destinataire du rapport. Noeud requis : le validateur l'exige déjà à la racine de la source. Seul son nom est porté par la couverture.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nom du client, tel qu'il apparaît sur la couverture."
+        }
+      }
+    }
+  }
 }

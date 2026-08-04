@@ -3,11 +3,71 @@ name: Incident Report
 version: 1.0
 purpose: Operational incident
 
-mandatory_components:
-  - C-001 Cover
-  - C-002 Identity
-  - C-003 Executive Summary
+# Structure du rapport : ordre des blocs et cardinalités admises.
+# `instance` nomme un bloc à occurrence unique ; sans lui, les occurrences sont
+# énumérées depuis la source. Aucune condition sur les données ici : c'est la
+# résolution qui détermine combien d'occurrences la source produit.
+components:
+  - type: C-001-cover
+    instance: cover
+    min: 1
+    max: 1
 
-optional_components:
-  - C-008 Timeline
-  - C-010 Evidence
+  - type: C-002-identity-page
+    instance: identity
+    min: 1
+    max: 1
+
+  - type: C-003-executive-summary
+    instance: executive-summary
+    min: 1
+    max: 1
+
+  - type: C-011-incident-context
+    instance: incident-context
+    min: 1
+    max: 1
+
+  - type: C-009-environment
+    instance: environment
+    min: 1
+    max: 1
+
+  - type: C-008-timeline
+    instance: timeline
+    min: 0
+    max: 1
+
+  - type: C-012-investigation
+    min: 0
+    max: null
+
+  - type: C-004-finding
+    min: 0
+    max: null
+
+  - type: C-013-probable-cause
+    instance: probable-cause
+    min: 0
+    max: 1
+
+  - type: C-007-decision
+    min: 0
+    max: null
+
+  - type: C-005-recommendation
+    min: 0
+    max: null
+
+  - type: C-006-risk
+    min: 0
+    max: null
+
+  - type: narrative
+    instance: conclusion
+    min: 1
+    max: 1
+
+  - type: C-010-evidence
+    min: 0
+    max: null

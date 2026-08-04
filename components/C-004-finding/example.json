@@ -1,4 +1,11 @@
 {
-  "component_id":"",
-  "component_version":"1.0"
+  "id": "finding-001",
+  "title": "Blocage observé pendant DBCC CHECKDB",
+  "severity": "high",
+  "observation": "Les sessions applicatives sont restées en attente pendant l'exécution du contrôle d'intégrité, de 09h10 à 13h05.",
+  "impact": "La saisie des commandes et la facturation ont été indisponibles pendant toute la durée du contrôle.",
+  "analysis": "La durée d'attente coïncide avec l'exécution du contrôle sur l'instance de production. L'hypothèse d'une contention sur tempdb n'est pas écartée mais n'est pas attestée par les relevés disponibles.",
+  "evidence_ids": [
+    "evidence-001"
+  ]
 }

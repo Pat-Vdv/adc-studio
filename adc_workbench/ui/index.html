@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADC Studio Workbench</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<header id="banner">
+  <h1>ADC Studio Workbench</h1>
+  <dl id="banner-facts"></dl>
+  <div id="selected-path" class="mono none" title="">aucune sélection</div>
+</header>
+
+<main id="panels">
+
+  <section class="panel" id="panel-mission" aria-labelledby="title-mission">
+    <header class="panel-head">
+      <h2 id="title-mission">Mission</h2>
+      <input type="search" class="filter" id="filter-mission" placeholder="filtrer…" aria-label="Filtrer les artefacts">
+    </header>
+    <div class="panel-body" id="body-mission"></div>
+  </section>
+
+  <section class="panel" id="panel-source" aria-labelledby="title-source">
+    <header class="panel-head">
+      <h2 id="title-source">Source canonique</h2>
+      <input type="search" class="filter" id="filter-source" placeholder="filtrer…" aria-label="Filtrer la source">
+    </header>
+    <div class="panel-body" id="body-source"></div>
+  </section>
+
+  <section class="panel" id="panel-diagnostics" aria-labelledby="title-diagnostics">
+    <header class="panel-head">
+      <h2 id="title-diagnostics">Diagnostics</h2>
+      <input type="search" class="filter" id="filter-diagnostics" placeholder="filtrer…" aria-label="Filtrer les diagnostics">
+    </header>
+    <div class="panel-body" id="body-diagnostics"></div>
+  </section>
+
+  <section class="panel" id="panel-components" aria-labelledby="title-components">
+    <header class="panel-head">
+      <h2 id="title-components">Composants</h2>
+      <input type="search" class="filter" id="filter-components" placeholder="filtrer…" aria-label="Filtrer les composants">
+    </header>
+    <div class="panel-body" id="body-components"></div>
+  </section>
+
+</main>
+
+<script src="/app.js" defer></script>
+</body>
+</html>

@@ -1,5 +1,30 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-007 Decision — fragment source",
+  "description": "Forme d'une occurrence de la collection `actions_taken`. Seul l'identifiant est requis : c'est par lui que le moteur instancie l'occurrence. Le validateur n'impose aujourd'hui aucune règle sur les mesures prises.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant de la mesure, stable dans le document. Requis parce que le moteur sélectionne l'occurrence par cet identifiant : sans lui, la mesure serait absente du rapport."
+    },
+    "title": {
+      "type": "string",
+      "description": "Intitulé de la mesure prise."
+    },
+    "description": {
+      "type": "string",
+      "description": "Ce qui a été fait."
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1,
+      "description": "État de la mesure. Volontairement non contraint par un `enum` : aucun vocabulaire n'est fermé pour ce champ, ni par le validateur ni par une règle documentée. Le fait que le rendu sache présenter certains statuts relève de la présentation, pas du domaine."
+    }
+  }
 }

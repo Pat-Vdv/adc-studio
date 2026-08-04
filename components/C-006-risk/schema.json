@@ -1,5 +1,38 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "title":"ADC Component",
-  "type":"object"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-006 Risk — fragment source",
+  "description": "Forme d'une occurrence de la collection `risks`. Seul l'identifiant est requis : c'est par lui que le moteur instancie l'occurrence. Les autres champs ne sont exigés ni par le validateur, ni par la composition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant du risque, stable dans le document. Requis parce que le moteur sélectionne l'occurrence par cet identifiant : sans lui, le risque serait absent du rapport."
+    },
+    "title": {
+      "type": "string",
+      "description": "Intitulé du risque."
+    },
+    "level": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Niveau du risque. Volontairement non contraint par un `enum`, contrairement à `severity` et `priority` : aucun vocabulaire n'est fermé pour ce champ, ni par le validateur ni par une règle documentée. Le fait que le rendu sache traduire certaines valeurs est une connaissance éditoriale, pas une règle de domaine — ne pas aligner sur les autres composants par symétrie apparente."
+    },
+    "description": {
+      "type": "string",
+      "description": "Ce que le risque recouvre."
+    },
+    "mitigation_recommendation_ids": {
+      "type": "array",
+      "description": "Recommandations qui traitent ce risque, désignées par identifiant. Leur existence est vérifiée par le validateur, pas ici.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
 }

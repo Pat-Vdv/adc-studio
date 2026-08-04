@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "C-011 Incident Context — fragment source",
+  "description": "Forme du noeud `incident_context` de la source. Le découpage du texte en paragraphes appartient au builder et n'apparaît pas ici.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "type": "string",
+      "description": "Circonstances de l'incident. Les paragraphes sont séparés par une ligne vide ; le builder les découpe."
+    },
+    "trigger": {
+      "type": "string",
+      "description": "Ce qui a déclenché l'incident, tel que la source le déclare."
+    },
+    "scope": {
+      "type": "string",
+      "description": "Périmètre technique concerné."
+    },
+    "status": {
+      "type": "string",
+      "description": "Statut déclaré du contexte. Aucun vocabulaire n'est fermé ici : aucune règle de domaine ne l'atteste (ADR-0010). Que le renderer sache traduire certaines valeurs relève de la présentation et ne ferme rien — même asymétrie assumée que pour `level` d'un risque."
+    }
+  }
+}

@@ -71,6 +71,11 @@ exports/
 output/
 dist/
 
+# Réglages locaux de l'outillage : ils ne doivent dépendre d'aucune discipline
+# de `git add`.
+.claude/settings.local.json
+.claude/settings.local.json.*
+
 # Système
 Thumbs.db
 Desktop.ini
