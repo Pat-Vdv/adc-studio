@@ -30,7 +30,7 @@ def _source() -> dict:
 def test_a_clean_source_produces_a_document_and_no_diagnostic():
     snapshot = observe(_source())
     assert snapshot.document is not None
-    assert snapshot.document.id == "ADC-MECA-2026-SQL2014-001"
+    assert snapshot.document.id == "ADC-SOC01-2026-SQL2014-001"
     assert snapshot.contract_diagnostics == ()
     assert snapshot.source_diagnostics == ()
     assert snapshot.composition_diagnostics == ()

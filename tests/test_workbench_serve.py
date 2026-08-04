@@ -84,7 +84,7 @@ def test_the_snapshot_is_served_as_json(running):
     assert status == 200
     assert headers["Content-Type"] == "application/json; charset=utf-8"
     snapshot = json.loads(body)
-    assert snapshot["document"]["id"] == "ADC-MECA-2026-SQL2014-001"
+    assert snapshot["document"]["id"] == "ADC-SOC01-2026-SQL2014-001"
     assert snapshot["resolution"], "les occurrences résolues doivent être transportées"
 
 

@@ -796,7 +796,7 @@ def test_cover_requires_no_field_inside_those_nodes():
 @pytest.mark.parametrize(
     "fragment",
     [
-        {"report": {"id": "ADC-MECA-2026-SQL2014-001"}, "client": {}},
+        {"report": {"id": "ADC-SOC01-2026-SQL2014-001"}, "client": {}},
         {"report": {"language": "fr-BE"}, "client": {}},
         {"report": {"revisions": [{"version": "0.1-draft"}]}, "client": {}},
         {"report": {}, "client": {"vat_number": "BE0123456789"}},

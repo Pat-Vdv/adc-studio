@@ -41,7 +41,7 @@ def _component(doc, component_id: str) -> ComponentInstance:
 def test_compose_returns_document():
     doc = compose_document(_data())
     assert isinstance(doc, Document)
-    assert doc.id == "ADC-MECA-2026-SQL2014-001"
+    assert doc.id == "ADC-SOC01-2026-SQL2014-001"
     assert doc.type == "incident_report"
     assert doc.metadata["client"] == "Soc01"
 
@@ -62,7 +62,7 @@ def test_identity_page_follows_cover():
     assert identity.component_id == "C-002-identity-page"
     assert identity.instance_id == "identity"
     identification = identity.payload["identification"]
-    assert identification["id"] == "ADC-MECA-2026-SQL2014-001"
+    assert identification["id"] == "ADC-SOC01-2026-SQL2014-001"
     assert identification["client"] == "Soc01"
     assert identification["language"] == "fr-BE"
     assert identification["confidentiality"] == "Confidentiel"

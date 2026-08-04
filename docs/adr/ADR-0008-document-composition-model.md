@@ -138,12 +138,12 @@ ni l’une ni l’autre : ils empêchent la composition d’avoir lieu (ADR-0009
 
 ```yaml
 document:
-  id: ADC-MECA-2026-SQL2014-001
+  id: ADC-SOC01-2026-SQL2014-001
   type: incident_report
   title: "Investigation — Blocage SQL Server lors de DBCC CHECKDB"
   metadata:
     client: Soc01
-    reference: ADC-MECA-2026-SQL2014-001
+    reference: ADC-SOC01-2026-SQL2014-001
     version: "0.1-draft"
     date: "2026-07-28"
     confidentiality: Confidentiel
@@ -166,7 +166,7 @@ document:
       instance_id: identity
       payload:
         identification:
-          reference: ADC-MECA-2026-SQL2014-001
+          reference: ADC-SOC01-2026-SQL2014-001
           language: fr-BE
         revisions: []
     - component_id: C-004-finding

@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0",
   "report": {
-    "id": "ADC-MECA-2026-SQL2014-001",
+    "id": "ADC-SOC01-2026-SQL2014-001",
     "title": "Investigation — Blocage SQL Server lors de DBCC CHECKDB",
     "subtitle": "Analyse technique et recommandations",
-    "reference": "ADC-MECA-2026-SQL2014-001",
+    "reference": "ADC-SOC01-2026-SQL2014-001",
     "version": "0.1-draft",
     "date": "2026-07-28",
     "author": "A.D.C. srl",

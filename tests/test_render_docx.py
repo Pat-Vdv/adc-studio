@@ -47,7 +47,7 @@ def test_cover_texts_present(tmp_path):
     assert "0.1-draft" in text  # version
     assert "2026-07-28" in text  # date
     assert "A.D.C. srl" in text  # auteur
-    assert "ADC-MECA-2026-SQL2014-001" in text  # référence
+    assert "ADC-SOC01-2026-SQL2014-001" in text  # référence
 
 
 def test_identity_page_texts_present(tmp_path):
