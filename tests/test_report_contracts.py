@@ -255,3 +255,38 @@ def test_the_contracts_are_consumed_at_the_boundary_only():
         if "adc_contracts" in path.read_text(encoding="utf-8")
     }
     assert consumers == {"entry.py"}
+
+
+# --- La localisation a son propre propriétaire (ADR-0010) -----------------
+
+
+def test_the_registry_is_neutral():
+    """Situer n'est pas valider : le registre ne dépend de rien.
+
+    S'il importait une couche du dépôt, une couche qui a besoin de **situer** un
+    fragment devrait traverser ce qu'il importe — exactement le trajet que
+    l'amendement d'ADR-0010 supprime.
+    """
+    import adc_fragments
+
+    source = (adc_contracts.ROOT / "tools" / "python" / "adc_fragments.py").read_text(
+        encoding="utf-8"
+    )
+    assert "import adc_" not in source
+    assert "from adc_" not in source
+    assert adc_fragments.INCIDENT_REPORT_FRAGMENTS is FRAGMENTS
+
+
+def test_the_location_is_declared_in_the_registry_alone():
+    """Un fait, une déclaration (ADR-0012, G2).
+
+    Le registre est le seul fichier du dépôt à porter la table. Les autres la
+    consomment ; aucun ne la redéclare.
+    """
+    tools = adc_contracts.ROOT / "tools" / "python"
+    declaring = {
+        path.relative_to(tools).as_posix()
+        for path in tools.rglob("*.py")
+        if "INCIDENT_REPORT_FRAGMENTS: dict" in path.read_text(encoding="utf-8")
+    }
+    assert declaring == {"adc_fragments.py"}

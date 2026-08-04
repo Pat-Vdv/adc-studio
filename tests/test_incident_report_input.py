@@ -244,7 +244,7 @@ def test_the_command_line_accepts_the_reference_source():
 # explicite plutôt que préfixée, de façon qu'un module nouveau soit un choix et
 # non un effet de bord.
 NEUTRAL_MODULES={"adc_profile","adc_profile.contract","adc_profile.resolution",
-                 "adc_contracts","adc_diagnostics"}
+                 "adc_contracts","adc_diagnostics","adc_fragments"}
 
 def test_validator_does_not_depend_on_the_engine():
     """Contrôle statique : le source ne mentionne que des modules neutres."""
