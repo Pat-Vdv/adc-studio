@@ -30,7 +30,8 @@ const LINKED = "linked";
  * ici. */
 const sourceNodes = new Map();      // chemin canonique -> élément de l'arbre
 const componentRows = new Map();    // identifiant de composant -> éléments
-const componentPaths = new Map();   // identifiant de composant -> chemin source
+const componentPaths = new Map();   // identifiant de composant -> chemin du contrat
+const occurrenceRows = new Map();   // chemin d'occurrence résolue -> éléments
 
 const ROOT_PATH = "$";
 
@@ -246,11 +247,13 @@ function registerNode(node, path) {
     showPath(path);
     // Relation inverse, seulement lorsqu'un contrat désigne exactement ce nœud.
     // Aucun nom de champ n'est reconnu : la comparaison porte sur des chemins.
-    const linked = [];
+    const linked = [...(occurrenceRows.get(path) || [])];
     for (const [componentId, componentPath] of componentPaths) {
       if (componentPath === path) linked.push(...(componentRows.get(componentId) || []));
     }
-    return linked;
+    // Dédoublonnage : un bloc unique est à la fois occurrence et contrat du
+    // même nœud, et ne doit pas être mis en évidence deux fois.
+    return [...new Set(linked)];
   });
 }
 
@@ -360,6 +363,7 @@ function renderComponents(snapshot) {
   body.textContent = "";
   componentRows.clear();
   componentPaths.clear();
+  occurrenceRows.clear();
 
   const payloads = new Map();
   for (const component of snapshot.components) {
@@ -410,13 +414,17 @@ function renderComponents(snapshot) {
     }
 
     row.dataset.filter = `${block.component_id} ${block.instance_id}`;
+    row.dataset.path = block.source_path;
     if (!componentRows.has(block.component_id)) componentRows.set(block.component_id, []);
     componentRows.get(block.component_id).push(row);
+    // L'occurrence porte son propre chemin : la relation ne passe plus par le
+    // contrat de son composant, mais par le fait que la résolution a produit.
+    if (!occurrenceRows.has(block.source_path)) occurrenceRows.set(block.source_path, []);
+    occurrenceRows.get(block.source_path).push(row);
 
     body.appendChild(onSelect(row, () => {
-      const path = componentPaths.get(block.component_id);
-      showPath(path === undefined ? null : path);
-      const node = path === undefined ? undefined : sourceNodes.get(path);
+      showPath(block.source_path);
+      const node = sourceNodes.get(block.source_path);
       return node ? [node] : [];
     }));
   }

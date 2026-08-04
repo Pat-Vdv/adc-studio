@@ -108,9 +108,10 @@ def test_clicking_a_component_highlights_its_source_node(browser):
         page.click("#body-components .row:has-text('C-004-finding')")
         primary, linked = _state(page)
         assert primary == ["panel-components|C-004-finding"]
-        # Le contrat désigne un nœud : c'est la seule extrémité disponible.
-        assert linked == ["panel-source|$.findings"]
-        assert page.inner_text("#selected-path") == "$.findings"
+        # La résolution a produit le chemin de l'occurrence elle-même : la
+        # relation désigne l'entrée prélevée, non plus la collection entière.
+        assert linked == ["panel-source|$.findings[0]"]
+        assert page.inner_text("#selected-path") == "$.findings[0]"
     finally:
         page.close()
         served.__exit__()
@@ -262,7 +263,7 @@ def test_a_second_selection_erases_every_trace_of_the_first(browser):
         page.click("#body-components .row:has-text('C-010-evidence')")
         primary, linked = _state(page)
         assert primary == ["panel-components|C-010-evidence"]
-        assert linked == ["panel-source|$.evidence"]
+        assert linked == ["panel-source|$.evidence[0]"]
         # Aucune trace de la première sélection, ni primaire ni liée.
         assert first_primary[0] not in primary
         assert first_linked[0] not in linked
@@ -297,6 +298,45 @@ def test_a_preview_closes_when_the_selection_moves(browser):
         assert page.is_visible(f"{first} pre")
         page.click("#body-components .row:has-text('C-010-evidence')")
         assert page.is_hidden(f"{first} pre")
+    finally:
+        page.close()
+        served.__exit__()
+
+
+# --- La relation d'occurrence, obtenue du refactoring ---------------------
+
+
+def test_a_source_occurrence_links_back_to_the_instance_taken_from_it(browser):
+    """`$.findings[0]` rejoint l'occurrence qui en a été composée.
+
+    La relation est produite par la résolution — seule couche qui connaisse
+    simultanément le chemin et l'identité — et transportée telle quelle. Aucun
+    préfixe, aucun découpage : une égalité de chemins.
+    """
+    served, page = _open(browser, observe(_source()))
+    try:
+        page.click("#body-source [data-path='$.findings[0]']")
+        primary, linked = _state(page)
+        assert primary == ["panel-source|$.findings[0]"]
+        assert linked == ["panel-components|C-004-finding"]
+    finally:
+        page.close()
+        served.__exit__()
+
+
+def test_a_deep_field_still_links_to_nothing(browser):
+    """L'appartenance d'un champ à son occurrence n'est déclarée par personne.
+
+    Elle exigerait un préfixe ou une décomposition ; tant qu'aucune couche ne la
+    produit, cliquer un champ profond ne relie rien. C'est la limite que P5
+    laisse volontairement en place.
+    """
+    served, page = _open(browser, observe(_source()))
+    try:
+        page.click("#body-source [data-path='$.findings[0].severity']")
+        primary, linked = _state(page)
+        assert primary == ["panel-source|$.findings[0].severity"]
+        assert linked == []
     finally:
         page.close()
         served.__exit__()
