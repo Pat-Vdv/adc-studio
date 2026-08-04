@@ -11,6 +11,12 @@ eux :
               └── résumé du validateur  (validate_incident_report.py)
 """
 from .contract import Profile, ProfileEntry, load_profile
-from .resolution import resolve
+from .resolution import ResolvedOccurrence, resolve
 
-__all__ = ["Profile", "ProfileEntry", "load_profile", "resolve"]
+__all__ = [
+    "Profile",
+    "ProfileEntry",
+    "ResolvedOccurrence",
+    "load_profile",
+    "resolve",
+]

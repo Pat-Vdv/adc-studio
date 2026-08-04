@@ -7,7 +7,7 @@ incrémentale à partir du cas réel « SQL Server Incident Report »
 """
 from adc_profile import Profile, load_profile
 
-from .model import ComponentInstance, Document
+from .model import ComponentInstance, Document, SourceOccurrence
 from .compose import compose_document, incident_profile
 from .entry import SourceContractError, compose_from_source
 
@@ -16,6 +16,7 @@ __all__ = [
     "Document",
     "Profile",
     "SourceContractError",
+    "SourceOccurrence",
     "compose_document",
     "compose_from_source",
     "incident_profile",

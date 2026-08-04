@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import adc_fragments
 from adc_engine import ComponentInstance, Document, compose_document
 from adc_engine.compose import incident_profile
 from adc_profile import resolve
@@ -21,6 +22,15 @@ SUMMARY_SECTIONS = ("context", "business_impact", "conclusion", "recommended_act
 
 def _data() -> dict:
     return json.loads(DATA.read_text(encoding="utf-8-sig"))
+
+
+def _resolve(data, profile):
+    """Résolution avec la localisation fournie par son registre (ADR-0010)."""
+    locations = adc_fragments.block_locations(
+        (entry.component_id, entry.instance_id) for entry in profile.entries
+    )
+    occurrences, diagnostics = resolve(data, profile, locations)
+    return tuple((o.component_id, o.instance_id) for o in occurrences), diagnostics
 
 
 def _component(doc, component_id: str) -> ComponentInstance:
@@ -778,7 +788,7 @@ def test_unsupported_components_are_reported_not_crashed():
 
 def test_composition_matches_resolution_order():
     data = _data()
-    blocks, _ = resolve(data, incident_profile())
+    blocks, _ = _resolve(data, incident_profile())
     resolved = [cid for cid, _ in blocks]
     doc = compose_document(data)
     supported = [c.component_id for c in doc.components]

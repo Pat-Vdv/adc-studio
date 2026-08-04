@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+import adc_fragments
 from adc_engine import compose_document
 from adc_engine.compose import incident_profile
 from adc_profile import load_profile, resolve
@@ -32,6 +33,14 @@ def _write_profile(path: Path, document: dict) -> Path:
     path.write_text(yaml.safe_dump(document, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return path
 
+
+def _resolve(data, profile):
+    """Résolution avec la localisation fournie par son registre (ADR-0010)."""
+    locations = adc_fragments.block_locations(
+        (entry.component_id, entry.instance_id) for entry in profile.entries
+    )
+    occurrences, diagnostics = resolve(data, profile, locations)
+    return tuple((o.component_id, o.instance_id) for o in occurrences), diagnostics
 
 # --- Contrat minimal ------------------------------------------------------
 
@@ -147,7 +156,7 @@ def test_mandatory_block_without_source_is_diagnosed_not_fabricated(tmp_path):
 
     data = _data()
     data.pop("probable_cause")
-    blocks, diagnostics = resolve(data, profile)
+    blocks, diagnostics = _resolve(data, profile)
 
     assert not any(instance == "probable-cause" for _, instance in blocks)  # rien de fabriqué
     assert any(
@@ -159,7 +168,7 @@ def test_mandatory_block_without_source_is_diagnosed_not_fabricated(tmp_path):
 def test_optional_block_absent_produces_no_diagnostic():
     data = _data()
     data.pop("timeline")
-    _, diagnostics = resolve(data, incident_profile())
+    _, diagnostics = _resolve(data, incident_profile())
     assert not any("C-008-timeline" in d for d in diagnostics)
 
 

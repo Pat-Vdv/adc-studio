@@ -28,9 +28,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
+import adc_fragments
 from adc_profile import Profile, load_profile, resolve
 
-from .model import ComponentInstance, Document
+from .model import ComponentInstance, Document, SourceOccurrence
 
 _INCIDENT_PROFILE = (
     Path(__file__).resolve().parents[3] / "profiles" / "p-003-incident-report.yaml"
@@ -43,8 +44,10 @@ def incident_profile() -> Profile:
     return load_profile(_INCIDENT_PROFILE)
 
 
-# Un builder reçoit (data_source, instance_id) et retourne le payload de rendu.
-Builder = Callable[[dict[str, Any], str], dict[str, Any]]
+# Un builder reçoit le fragment que la résolution a déjà sélectionné, et
+# l'identifiant de l'occurrence. Il ne cherche plus sa donnée : la chercher
+# serait la sélectionner une seconde fois (ADR-0012, G2).
+Builder = Callable[[Any, str], dict[str, Any]]
 
 # Identité d'un bloc pour le dispatch : composant, et occurrence nommée si le
 # profil en déclare une. Plusieurs blocs peuvent partager un `component_id` —
@@ -79,9 +82,9 @@ def _paragraphs(raw: Any) -> tuple[str, ...]:
     return tuple(block.strip() for block in blocks if block.strip())
 
 
-def _build_cover(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
-    report = data.get("report", {})
-    client = data.get("client", {})
+def _build_cover(fragment: Any, instance_id: str) -> dict[str, Any]:
+    report = fragment.get("report", {})
+    client = fragment.get("client", {})
     return {
         "document_type": "Rapport d'incident",
         "title": report.get("title"),
@@ -95,14 +98,14 @@ def _build_cover(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
-def _build_identity_page(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_identity_page(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Identité documentaire : métadonnées, révisions, validations, diffusion.
 
     Les trois derniers blocs sont optionnels dans la source : absents, ils
     produisent un tuple vide et la section correspondante n'est pas rendue.
     """
-    report = data.get("report", {})
-    client = data.get("client", {})
+    report = fragment.get("report", {})
+    client = fragment.get("client", {})
     return {
         "heading": "Identité du document",
         "identification": {
@@ -122,13 +125,13 @@ def _build_identity_page(data: dict[str, Any], instance_id: str) -> dict[str, An
     }
 
 
-def _build_executive_summary(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_executive_summary(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Résumé exécutif : quatre volets narratifs, chacun en paragraphes.
 
     Un volet absent de la source produit un tuple vide ; c'est le rendu qui
     décide d'omettre la sous-section correspondante.
     """
-    summary = data.get("executive_summary", {})
+    summary = fragment
     if not isinstance(summary, dict):
         summary = {}
     return {
@@ -140,13 +143,13 @@ def _build_executive_summary(data: dict[str, Any], instance_id: str) -> dict[str
     }
 
 
-def _build_environment(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_environment(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Environnement technique : caractéristiques système et volumes de stockage.
 
     Les caractéristiques sont reprises telles quelles (aucune conversion
     d'unité, aucune valeur déduite) ; les volumes absents donnent un tuple vide.
     """
-    environment = data.get("environment", {})
+    environment = fragment
     if not isinstance(environment, dict):
         environment = {}
     return {
@@ -166,7 +169,7 @@ def _build_environment(data: dict[str, Any], instance_id: str) -> dict[str, Any]
     }
 
 
-def _build_timeline(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_timeline(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Chronologie : une entrée par événement, dans l'ordre de la source.
 
     Aucun tri, aucune date déduite, aucun statut inféré : la chronologie rendue
@@ -174,17 +177,17 @@ def _build_timeline(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     """
     return {
         "heading": "Chronologie",
-        "entries": _rows(data.get("timeline"), ("id", "timestamp", "title", "description")),
+        "entries": _rows(fragment, ("id", "timestamp", "title", "description")),
     }
 
 
-def _build_incident_context(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_incident_context(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Contexte de l'incident : circonstances, déclencheur, périmètre, statut.
 
     Le statut garde sa valeur canonique et n'est déduit d'aucun autre champ ;
     les qualificatifs absents restent absents.
     """
-    source = data.get("incident_context", {})
+    source = fragment
     if not isinstance(source, dict):
         source = {}
     return {
@@ -196,14 +199,14 @@ def _build_incident_context(data: dict[str, Any], instance_id: str) -> dict[str,
     }
 
 
-def _build_probable_cause(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_probable_cause(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Cause probable : énoncé, niveau de confiance, constats à l'appui.
 
     Les constats restent des identifiants, dans l'ordre exact de la source et
     sans déduplication : une référence répétée est une information de la
     source, pas un défaut à corriger ici.
     """
-    source = data.get("probable_cause", {})
+    source = fragment
     if not isinstance(source, dict):
         source = {}
     supporting = source.get("supporting_finding_ids")
@@ -215,41 +218,27 @@ def _build_probable_cause(data: dict[str, Any], instance_id: str) -> dict[str, A
     }
 
 
-def _build_conclusion(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_conclusion(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Conclusion : texte final du rapport, normalisé en paragraphes.
 
     La source est strictement une chaîne ; toute autre forme ne produit aucun
     contenu, plutôt qu'une interprétation. Aucun champ dérivé, aucune
     transformation éditoriale du texte.
     """
-    raw = data.get("conclusion")
+    raw = fragment
     return {
         "heading": "Conclusion",
         "text": _paragraphs(raw) if isinstance(raw, str) else (),
     }
 
 
-def _entry_by_id(raw: Any, instance_id: str) -> dict[str, Any]:
-    """Entrée source d'un composant répétable, retrouvée par son identifiant.
-
-    Introuvable, elle donne un dictionnaire vide : le builder produit alors un
-    payload aux champs vides plutôt qu'une exception.
-    """
-    if not isinstance(raw, list):
-        return {}
-    return next(
-        (item for item in raw if isinstance(item, dict) and item.get("id") == instance_id),
-        {},
-    )
-
-
-def _build_investigation(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_investigation(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Investigation : l'occurrence de `investigations` portant `instance_id`.
 
     Le résultat est repris tel que déclaré — jamais déduit de la description,
     jamais traduit : aucun vocabulaire n'est déclaré pour ce champ.
     """
-    source = _entry_by_id(data.get("investigations"), instance_id)
+    source = fragment if isinstance(fragment, dict) else {}
     return {
         "id": source.get("id"),
         "title": source.get("title"),
@@ -258,13 +247,13 @@ def _build_investigation(data: dict[str, Any], instance_id: str) -> dict[str, An
     }
 
 
-def _build_finding(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_finding(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Constat : l'occurrence dont l'identifiant est `instance_id`.
 
     Le payload ne porte que les `evidence_ids` : les identifiants restent les
     clés de liaison internes du modèle, leur libellé lisible relève du rendu.
     """
-    source = _entry_by_id(data.get("findings"), instance_id)
+    source = fragment if isinstance(fragment, dict) else {}
     evidence_ids = source.get("evidence_ids")
     return {
         "id": source.get("id"),
@@ -277,13 +266,13 @@ def _build_finding(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
-def _build_decision(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_decision(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Mesure prise : l'occurrence de `actions_taken` portant `instance_id`.
 
     Le statut est repris tel quel, dans sa valeur canonique : ni traduit, ni
     déduit d'une date ou d'un résultat.
     """
-    source = _entry_by_id(data.get("actions_taken"), instance_id)
+    source = fragment if isinstance(fragment, dict) else {}
     return {
         "id": source.get("id"),
         "title": source.get("title"),
@@ -292,14 +281,14 @@ def _build_decision(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
-def _build_recommendation(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_recommendation(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Recommandation : l'occurrence de `recommendations` portant `instance_id`.
 
     La priorité reste dans sa valeur canonique anglaise : la traduction est une
     affaire de rendu, jamais de modèle. Les constats liés sont conservés comme
     identifiants, à l'image des preuves du constat.
     """
-    source = _entry_by_id(data.get("recommendations"), instance_id)
+    source = fragment if isinstance(fragment, dict) else {}
     related = source.get("related_finding_ids")
     return {
         "id": source.get("id"),
@@ -311,13 +300,13 @@ def _build_recommendation(data: dict[str, Any], instance_id: str) -> dict[str, A
     }
 
 
-def _build_risk(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_risk(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Risque : l'occurrence de `risks` portant `instance_id`.
 
     Le niveau garde sa valeur canonique anglaise et les traitements prévus
     restent des identifiants de recommandations.
     """
-    source = _entry_by_id(data.get("risks"), instance_id)
+    source = fragment if isinstance(fragment, dict) else {}
     mitigations = source.get("mitigation_recommendation_ids")
     return {
         "id": source.get("id"),
@@ -330,13 +319,13 @@ def _build_risk(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
     }
 
 
-def _build_evidence(data: dict[str, Any], instance_id: str) -> dict[str, Any]:
+def _build_evidence(fragment: Any, instance_id: str) -> dict[str, Any]:
     """Preuve : l'occurrence de `evidence` portant `instance_id`.
 
     Nature, origine et contenu sont repris tels que déclarés : rien n'est
     déduit, et la preuve n'emporte aucune interprétation.
     """
-    source = _entry_by_id(data.get("evidence"), instance_id)
+    source = fragment if isinstance(fragment, dict) else {}
     return {
         "id": source.get("id"),
         "title": source.get("title"),
@@ -458,17 +447,33 @@ def compose_document(data: dict[str, Any], profile: Profile | None = None) -> Do
     report = data.get("report", {})
     client = data.get("client", {})
 
-    blocks, diagnostics_list = resolve(data, profile or incident_profile())
+    profile = profile or incident_profile()
+    # La localisation vient de son registre (ADR-0010) : la composition la
+    # consomme, elle ne la déclare pas.
+    locations = adc_fragments.block_locations(
+        (entry.component_id, entry.instance_id) for entry in profile.entries
+    )
+    occurrences, diagnostics_list = resolve(data, profile, locations)
 
     instances: list[ComponentInstance] = []
     diagnostics: list[str] = list(diagnostics_list)
 
-    for component_id, instance_id in blocks:
-        builder = _builder_for(component_id, instance_id)
+    for occurrence in occurrences:
+        builder = _builder_for(occurrence.component_id, occurrence.instance_id)
         if builder is None:
-            diagnostics.append(f"builder manquant: {component_id} :: {instance_id}")
+            diagnostics.append(
+                f"builder manquant: {occurrence.component_id} :: {occurrence.instance_id}"
+            )
             continue
-        instances.append(ComponentInstance(component_id, instance_id, builder(data, instance_id)))
+        instances.append(
+            ComponentInstance(
+                occurrence.component_id,
+                occurrence.instance_id,
+                # Le fragment est déjà sélectionné : le builder transforme, il
+                # ne cherche plus.
+                builder(occurrence.fragment, occurrence.instance_id),
+            )
+        )
 
     # Le contexte se déduit des instances : les références ne sont donc
     # confrontées qu'à ce que l'IR contient réellement.
@@ -496,4 +501,7 @@ def compose_document(data: dict[str, Any], profile: Profile | None = None) -> Do
         },
         components=tuple(instances),
         diagnostics=tuple(diagnostics),
+        source_occurrences=tuple(
+            SourceOccurrence(o.component_id, o.instance_id, o.source_path) for o in occurrences
+        ),
     )

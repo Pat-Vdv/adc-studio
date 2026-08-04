@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import adc_contracts
+import adc_fragments
 import adc_mission
 from adc_engine import SourceContractError, compose_from_source, incident_profile
 from adc_engine.validation import validate
@@ -105,9 +106,14 @@ def observe(source: Any, profile: Profile | None = None) -> WorkbenchSnapshot:
     # La résolution est observée d'abord, et pour elle-même : elle ne dépend pas
     # de la frontière, et reste donc lisible quand la composition a refusé.
     if isinstance(source, dict):
-        blocks, resolution_diagnostics = resolve(source, profile)
+        # La localisation vient de son registre (ADR-0010), comme pour le
+        # moteur : l'observation la consomme, elle ne la redéclare pas.
+        locations = adc_fragments.block_locations(
+            (entry.component_id, entry.instance_id) for entry in profile.entries
+        )
+        occurrences, resolution_diagnostics = resolve(source, profile, locations)
     else:
-        blocks, resolution_diagnostics = (), ()
+        occurrences, resolution_diagnostics = (), ()
         notes.append("source non observable par la résolution : objet attendu à la racine")
 
     document = None
@@ -151,11 +157,12 @@ def observe(source: Any, profile: Profile | None = None) -> WorkbenchSnapshot:
     instances = {(c.component_id, c.instance_id) for c in components}
     resolution = tuple(
         ResolvedBlock(
-            component_id=component_id,
-            instance_id=instance_id,
-            composed=(component_id, instance_id) in instances,
+            component_id=occurrence.component_id,
+            instance_id=occurrence.instance_id,
+            composed=(occurrence.component_id, occurrence.instance_id) in instances,
+            source_path=occurrence.source_path,
         )
-        for component_id, instance_id in blocks
+        for occurrence in occurrences
     )
 
     return WorkbenchSnapshot(

@@ -24,8 +24,8 @@ import pytest
 import adc_contracts
 from adc_engine import incident_profile
 from adc_engine.validation import validate
+import adc_fragments
 from adc_profile import resolve
-from adc_profile import resolution
 
 FRAGMENTS = adc_contracts.INCIDENT_REPORT_FRAGMENTS
 
@@ -55,13 +55,21 @@ def _reference_source() -> dict:
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
+def _resolve(data: dict):
+    profile = incident_profile()
+    locations = adc_fragments.block_locations(
+        (entry.component_id, entry.instance_id) for entry in profile.entries
+    )
+    return resolve(data, profile, locations)
+
+
 def _blocks(data: dict) -> tuple[tuple[str, str], ...]:
-    blocks, _ = resolve(data, incident_profile())
-    return blocks
+    occurrences, _ = _resolve(data)
+    return tuple((o.component_id, o.instance_id) for o in occurrences)
 
 
 def _resolution_diagnostics(data: dict) -> tuple[str, ...]:
-    _, diagnostics = resolve(data, incident_profile())
+    _, diagnostics = _resolve(data)
     return diagnostics
 
 
@@ -74,14 +82,25 @@ def test_every_node_claimed_by_the_resolution_is_located_by_the_table():
     Un nœud que la résolution réclame sans que la table le situe serait un
     cinquième lieu de vérité, invisible à la frontière d'entrée.
     """
-    claimed = {node for node in resolution._SINGLE_OCCURRENCE_SOURCES.values() if node}
-    claimed |= set(resolution._MULTIPLE_OCCURRENCE_SOURCES.values())
+    profile = incident_profile()
+    claimed = {
+        node
+        for node in adc_fragments.block_locations(
+            (entry.component_id, entry.instance_id) for entry in profile.entries
+        ).values()
+        if node
+    }
     located = {f.path for f in FRAGMENTS.values() if f.kind != adc_contracts.SOURCE}
     assert claimed <= located, "nœud réclamé par la résolution et situé nulle part"
 
 
 @pytest.mark.parametrize(
-    "component_id,node", sorted(resolution._MULTIPLE_OCCURRENCE_SOURCES.items())
+    "component_id,node",
+    sorted(
+        (key, fragment.path)
+        for key, fragment in FRAGMENTS.items()
+        if fragment.kind == adc_contracts.OCCURRENCE
+    ),
 )
 def test_both_tables_name_the_same_node_for_a_repeatable_block(component_id, node):
     """Deux déclarations indépendantes du même fait doivent coïncider.
@@ -190,9 +209,13 @@ def test_a_root_fragment_block_is_always_resolved(instance_id):
 
 
 def test_no_single_block_escapes_the_rule():
-    # Aucun bloc unique ne doit être déclaré présent sans condition alors que
-    # son fragment porte un nom — c'est exactement l'écart corrigé.
+    # Aucun bloc unique n'est présent sans condition si son fragment porte un
+    # nom — c'est exactement l'écart corrigé, désormais dérivé du registre.
+    profile = incident_profile()
+    locations = adc_fragments.block_locations(
+        (entry.component_id, entry.instance_id) for entry in profile.entries
+    )
     unconditional = {
-        instance for instance, node in resolution._SINGLE_OCCURRENCE_SOURCES.items() if node is None
+        instance for (_, instance), node in locations.items() if node is None and instance
     }
     assert unconditional == set(ROOT_FRAGMENT_BLOCKS)

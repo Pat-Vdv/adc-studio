@@ -27,6 +27,23 @@ class ComponentInstance:
 
 
 @dataclass(frozen=True)
+class SourceOccurrence:
+    """Où une occurrence composée a été prélevée dans la source.
+
+    Produite par la résolution, qui sélectionne — donc par la seule couche qui
+    connaisse simultanément le chemin et l'identité de l'occurrence.
+
+    `source_path` désigne **l'occurrence entière** (`$.findings[0]`), jamais un
+    champ : aucune relation entre un champ source et un champ de payload n'est
+    décrite ici, et aucune ne peut en être déduite.
+    """
+
+    component_id: str
+    instance_id: str
+    source_path: str
+
+
+@dataclass(frozen=True)
 class Document:
     """Résultat logique d'une composition, indépendant du format de sortie.
 
@@ -44,3 +61,6 @@ class Document:
     components: tuple[ComponentInstance, ...] = ()
     diagnostics: tuple[str, ...] = ()
     source_diagnostics: tuple[ValidationDiagnostic, ...] = ()
+    # D'où chaque occurrence a été prélevée. Fait d'observation, distinct des
+    # deux natures de diagnostic comme des données métier du payload.
+    source_occurrences: tuple[SourceOccurrence, ...] = ()

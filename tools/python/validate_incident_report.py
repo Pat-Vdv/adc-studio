@@ -22,6 +22,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import adc_contracts  # noqa: E402
+import adc_fragments  # noqa: E402
 from adc_diagnostics import BUSINESS, ValidationDiagnostic  # noqa: E402
 from adc_profile import load_profile, resolve  # noqa: E402
 
@@ -152,8 +153,10 @@ def validate(data:Any)->list[ValidationDiagnostic]:
 
 def summary_blocks(data:dict[str,Any])->tuple[tuple[str,str],...]:
     """Occurrences ordonnées telles que le profil les déclare."""
-    blocks,_=resolve(data,load_profile(PROFILE_PATH))
-    return blocks
+    profile=load_profile(PROFILE_PATH)
+    locations=adc_fragments.block_locations((e.component_id,e.instance_id) for e in profile.entries)
+    occurrences,_=resolve(data,profile,locations)
+    return tuple((o.component_id,o.instance_id) for o in occurrences)
 
 def main():
     p=argparse.ArgumentParser(); p.add_argument("input",type=Path); p.add_argument("--summary",action="store_true"); a=p.parse_args()

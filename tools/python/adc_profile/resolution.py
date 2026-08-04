@@ -1,13 +1,19 @@
-"""Résolution : profil + données -> liste ordonnée d'occurrences.
+"""Résolution : profil + données + localisation -> occurrences résolues.
 
 Le partage des responsabilités est strict :
 
+- la **localisation** dit dans quel nœud de la source vit un bloc. Elle est un
+  fait structurel neutre (ADR-0010) et ce module ne la possède pas : elle lui
+  est **fournie**. Il n'en garde aucune table, n'en déduit rien d'un
+  identifiant de composant, et n'importe aucun registre ;
 - le **profil** déclare l'ordre, les cardinalités et le caractère obligatoire
   ou optionnel de chaque bloc ;
-- la **source** détermine, via les tables ci-dessous, si un bloc produit zéro,
-  une ou plusieurs occurrences ;
-- la **résolution** ordonne les occurrences selon le profil et confronte leur
-  nombre aux cardinalités déclarées.
+- la **résolution** sélectionne la donnée, ordonne les occurrences et confronte
+  leur nombre aux cardinalités déclarées.
+
+Elle **sélectionne une fois pour toutes** : l'occurrence résolue porte la donnée
+elle-même, et la composition n'a plus à la retrouver. La resélectionner en aval
+serait une seconde déclaration du même fait (ADR-0012, G2).
 
 Aucune occurrence n'est fabriquée pour satisfaire une cardinalité : un écart
 produit un diagnostic, jamais un bloc vide.
@@ -31,60 +37,92 @@ ce qui permet à plusieurs outils de partager la même description de l'ordre.
 """
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Mapping
 
 from .contract import Profile, ProfileEntry
 
-# Bloc à occurrence unique -> nœud source dont dépend sa présence.
-#
-# `None` désigne le **fragment racine** : le bloc consomme la source entière,
-# qui est toujours présente. Ce n'est pas une exception à la règle, c'en est
-# l'application — la présence d'un bloc suit celle de son fragment déclaré.
-_SINGLE_OCCURRENCE_SOURCES: dict[str, str | None] = {
-    "cover": None,
-    "identity": None,
-    "executive-summary": "executive_summary",
-    "incident-context": "incident_context",
-    "environment": "environment",
-    "timeline": "timeline",
-    "probable-cause": "probable_cause",
-    "conclusion": "conclusion",
-}
+ROOT_PATH = "$"
 
-# Bloc répétable -> collection source qui porte ses occurrences.
-_MULTIPLE_OCCURRENCE_SOURCES: dict[str, str] = {
-    "C-012-investigation": "investigations",
-    "C-004-finding": "findings",
-    "C-007-decision": "actions_taken",
-    "C-005-recommendation": "recommendations",
-    "C-006-risk": "risks",
-    "C-010-evidence": "evidence",
-}
+# Identité d'un bloc du profil : son composant, et son occurrence nommée s'il en
+# déclare une. C'est la clé sous laquelle la localisation lui est fournie.
+BlockKey = tuple[str, str | None]
+
+# Localisation d'un bloc : le nom du nœud source qui le porte, ou `None` pour le
+# fragment racine — la source entière.
+Locations = Mapping[BlockKey, str | None]
 
 
-def _occurrences(entry: ProfileEntry, data: dict[str, Any]) -> tuple[tuple[str, ...], str | None]:
-    """Identifiants d'occurrence produits par la source pour ce bloc.
+@dataclass(frozen=True)
+class ResolvedOccurrence:
+    """Une occurrence sélectionnée, et tout ce qui permet de la situer.
 
-    Retourne aussi un diagnostic quand le bloc déclaré par le profil n'a aucune
-    source connue : mieux vaut le signaler que l'omettre en silence.
+    Un type nommé plutôt qu'un tuple : la valeur porte quatre faits de natures
+    différentes, et leur position ne doit pas devenir un contrat implicite.
+
+    - `source_path` est le chemin canonique du fragment consommé — `$`,
+      `$.environment`, `$.findings[0]`. Il désigne **l'occurrence**, jamais un
+      champ : aucune relation champ-à-champ n'est décrite ici.
+    - `fragment` est la donnée déjà sélectionnée. La composition la reçoit ; la
+      retrouver serait sélectionner deux fois.
     """
-    if entry.instance_id is not None:
-        if entry.instance_id not in _SINGLE_OCCURRENCE_SOURCES:
-            return (), f"source d'occurrences inconnue: {entry.component_id} :: {entry.instance_id}"
-        key = _SINGLE_OCCURRENCE_SOURCES[entry.instance_id]
-        present = True if key is None else key in data
-        return ((entry.instance_id,) if present else ()), None
 
-    if entry.component_id not in _MULTIPLE_OCCURRENCE_SOURCES:
-        return (), f"source d'occurrences inconnue: {entry.component_id}"
+    component_id: str
+    instance_id: str
+    source_path: str
+    fragment: Any
 
-    collection = data.get(_MULTIPLE_OCCURRENCE_SOURCES[entry.component_id], [])
-    if not isinstance(collection, list):
-        return (), None
+
+def _single(entry: ProfileEntry, data: dict[str, Any], node: str | None):
+    """Occurrence d'un bloc unique, si son fragment déclaré est présent."""
+    if node is None:
+        # Fragment racine : la source entière, toujours présente.
+        return (ResolvedOccurrence(entry.component_id, entry.instance_id, ROOT_PATH, data),)
+    if node not in data:
+        return ()
     return (
-        tuple(item["id"] for item in collection if isinstance(item, dict) and item.get("id")),
-        None,
+        ResolvedOccurrence(
+            entry.component_id, entry.instance_id, f"{ROOT_PATH}.{node}", data[node]
+        ),
     )
+
+
+def _repeatable(entry: ProfileEntry, data: dict[str, Any], node: str | None):
+    """Occurrences d'un bloc répétable, dans l'ordre de la source.
+
+    L'index appartient au chemin canonique au même titre que le nom du nœud. Une
+    entrée sans identifiant exploitable n'est pas instanciable et n'est donc pas
+    résolue : c'est son contrat qui doit l'exiger, pas la résolution qui doit la
+    deviner.
+    """
+    if node is None:
+        return ()
+    collection = data.get(node, [])
+    if not isinstance(collection, list):
+        return ()
+    return tuple(
+        ResolvedOccurrence(entry.component_id, item["id"], f"{ROOT_PATH}.{node}[{index}]", item)
+        for index, item in enumerate(collection)
+        if isinstance(item, dict) and item.get("id")
+    )
+
+
+def _occurrences(
+    entry: ProfileEntry, data: dict[str, Any], locations: Locations
+) -> tuple[tuple[ResolvedOccurrence, ...], str | None]:
+    """Occurrences produites par la source pour ce bloc, et leur diagnostic.
+
+    Un bloc dont la localisation n'est pas fournie ne peut pas être résolu :
+    mieux vaut le signaler que l'omettre en silence.
+    """
+    key: BlockKey = (entry.component_id, entry.instance_id)
+    if key not in locations:
+        named = f"{entry.component_id} :: {entry.instance_id}" if entry.instance_id else entry.component_id
+        return (), f"source d'occurrences inconnue: {named}"
+    node = locations[key]
+    if entry.instance_id is not None:
+        return _single(entry, data, node), None
+    return _repeatable(entry, data, node), None
 
 
 def _cardinality_diagnostic(entry: ProfileEntry, count: int) -> str | None:
@@ -102,20 +140,20 @@ def _cardinality_diagnostic(entry: ProfileEntry, count: int) -> str | None:
 
 
 def resolve(
-    data: dict[str, Any], profile: Profile
-) -> tuple[tuple[tuple[str, str], ...], tuple[str, ...]]:
+    data: dict[str, Any], profile: Profile, locations: Locations
+) -> tuple[tuple[ResolvedOccurrence, ...], tuple[str, ...]]:
     """Occurrences ordonnées selon le profil, et diagnostics de résolution."""
-    blocks: list[tuple[str, str]] = []
+    resolved: list[ResolvedOccurrence] = []
     diagnostics: list[str] = []
 
     for entry in profile.entries:
-        instance_ids, missing_source = _occurrences(entry, data)
+        occurrences, missing_source = _occurrences(entry, data, locations)
         if missing_source:
             diagnostics.append(missing_source)
-        blocks += [(entry.component_id, instance_id) for instance_id in instance_ids]
+        resolved += occurrences
 
-        cardinality = _cardinality_diagnostic(entry, len(instance_ids))
+        cardinality = _cardinality_diagnostic(entry, len(occurrences))
         if cardinality:
             diagnostics.append(cardinality)
 
-    return tuple(blocks), tuple(diagnostics)
+    return tuple(resolved), tuple(diagnostics)

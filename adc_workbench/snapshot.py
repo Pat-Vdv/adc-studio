@@ -68,11 +68,17 @@ class ResolvedBlock:
     Il ne dit **pas pourquoi** elle n'y figure pas : cette raison est portée par
     un diagnostic de composition, aujourd'hui non structuré. L'inférer ici serait
     reconstituer une décision du moteur (W3).
+
+    `source_path` est le chemin canonique du fragment que la résolution a
+    sélectionné — `$.findings[0]`. Il désigne **l'occurrence entière**, jamais un
+    champ : aucune relation entre un champ source et un champ de payload n'est
+    portée ici, et aucune ne peut en être déduite.
     """
 
     component_id: str
     instance_id: str
     composed: bool
+    source_path: str
 
 
 @dataclass(frozen=True)

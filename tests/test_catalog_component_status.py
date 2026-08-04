@@ -24,7 +24,7 @@ import adc_contracts
 from adc_engine import incident_profile
 from adc_engine.compose import _BUILDERS
 from adc_engine.render_docx import _RENDERERS
-from adc_profile import resolution
+import adc_fragments
 
 CATALOG = adc_contracts.ROOT / "COMPONENT_CATALOG.md"
 
@@ -83,10 +83,8 @@ def test_a_catalog_component_has_a_declared_resolution(component_id):
     """
     entry = _profile_entry(component_id)
     assert entry is not None, "absent du profil"
-    if entry.instance_id is not None:
-        assert entry.instance_id in resolution._SINGLE_OCCURRENCE_SOURCES
-    else:
-        assert component_id in resolution._MULTIPLE_OCCURRENCE_SOURCES
+    located = adc_fragments.block_locations([(entry.component_id, entry.instance_id)])
+    assert (entry.component_id, entry.instance_id) in located
 
 
 @pytest.mark.parametrize("component_id", COMPONENTS)

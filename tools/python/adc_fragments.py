@@ -66,3 +66,33 @@ INCIDENT_REPORT_FRAGMENTS: dict[str, Fragment] = {
     # Bloc `narrative` du profil : bâti par un builder, sans contrat.
     "conclusion": Fragment(ROOT_FRAGMENT, NODE, "conclusion"),
 }
+
+
+# Blocs du profil dont la clé de registre n'est pas l'identifiant de composant.
+# Un fragment racine y est indexé par nom de nœud, et rien ne relie cette clé au
+# marqueur de bloc que le profil emploie. Il n'en reste qu'un, dont le statut
+# contractuel est différé (ADR-0013, D2) : cette table disparaîtra avec lui.
+BLOCK_REGISTRY_KEYS: dict[tuple[str, str | None], str] = {
+    ("narrative", "conclusion"): "conclusion",
+}
+
+
+def block_locations(blocks, table=None):
+    """Nœud source de chaque bloc du profil, ou `None` pour le fragment racine.
+
+    `blocks` est une suite de couples (identifiant de composant, occurrence
+    nommée) — la forme qu'un profil expose, sans que ce module ait à le
+    connaître : il reste neutre.
+
+    Un bloc que le registre ne situe pas est simplement absent du résultat. La
+    résolution le diagnostiquera : mieux vaut qu'elle dise ne pas savoir où
+    chercher, plutôt que ce module invente un chemin.
+    """
+    located: dict[tuple[str, str | None], str | None] = {}
+    for key in blocks:
+        fragment = (table or INCIDENT_REPORT_FRAGMENTS).get(
+            BLOCK_REGISTRY_KEYS.get(key, key[0])
+        )
+        if fragment is not None:
+            located[key] = None if fragment.kind == SOURCE else fragment.path
+    return located
