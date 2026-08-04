@@ -312,3 +312,21 @@ def test_no_builder_receives_the_whole_source():
     for builder in builders:
         first = builder.args.args[0].arg
         assert first == "fragment", f"{builder.name} reçoit « {first} » au lieu du fragment"
+
+
+def test_the_registry_key_exceptions_are_bounded_by_the_deferred_status():
+    """Le résidu du statut différé ne doit pas survivre à sa cause (ADR-0013, D2).
+
+    Un bloc du profil est situé par l'identifiant de son composant. Un fragment
+    racine échappe à cette clé — le registre l'indexe par nom de nœud, le profil
+    par marqueur de bloc, et rien ne relie les deux. Il n'en reste qu'un.
+
+    Ce test lie l'exception à sa cause : le jour où le dernier fragment racine
+    est contractualisé, la table doit se vider. Sans lui, elle survivrait en
+    silence à la décision qui la justifiait.
+    """
+    import adc_fragments
+
+    roots = {key for key, f in FRAGMENTS.items() if f.nature == adc_contracts.ROOT_FRAGMENT}
+    assert set(adc_fragments.BLOCK_REGISTRY_KEYS.values()) == roots
+    assert len(adc_fragments.BLOCK_REGISTRY_KEYS) == len(roots)
