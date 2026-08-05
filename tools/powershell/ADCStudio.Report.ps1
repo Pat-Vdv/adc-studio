@@ -30,7 +30,7 @@
         }
     }
 
-    $auteurParDefaut = "Auteur Exemple"
+    $auteurParDefaut = "A.D.C. srl"
     $auteur = Read-Host "Auteur [$auteurParDefaut]"
 
     if ([string]::IsNullOrWhiteSpace($auteur)) {

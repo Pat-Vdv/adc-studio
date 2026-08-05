@@ -6,8 +6,8 @@
   "instance": "APPPROD",
   "primary_database": "APPPROD_DB",
   "collation": "French_CI_AS",
-  "cpu_logical_count": 40,
-  "memory_gb": 64,
+  "cpu_logical_count": 16,
+  "memory_gb": 32,
   "storage": [
     {
       "volume": "C:",

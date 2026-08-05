@@ -218,7 +218,7 @@ def test_environment_accepts_a_partial_fragment():
 
 def test_environment_rejects_a_fractional_cpu_count():
     # Un décompte de processeurs logiques est entier par nature.
-    errors = _environment_errors({"cpu_logical_count": 40.5})
+    errors = _environment_errors({"cpu_logical_count": 16.5})
     assert len(errors) == 1
     assert errors[0].startswith(f"{C_009}: $.cpu_logical_count: ")
 

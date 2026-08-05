@@ -225,7 +225,7 @@ def test_the_textual_form_is_the_rendering_of_the_diagnostics():
 
 def test_a_fragment_validated_alone_keeps_local_paths():
     errors = adc_contracts.validate_fragment(
-        "C-009-environment", {"cpu_logical_count": 40.5}
+        "C-009-environment", {"cpu_logical_count": 16.5}
     )
     assert errors[0].startswith("C-009-environment: $.cpu_logical_count: ")
 

@@ -133,7 +133,7 @@ def test_environment_texts_present(tmp_path):
     assert "SRV-SQL-01" in text
     assert "Microsoft SQL Server 2014 Standard" in text
     assert "French_CI_AS" in text
-    assert "40" in text  # processeurs logiques, valeur numérique rendue
+    assert "16" in text  # processeurs logiques, valeur numérique rendue
 
 
 def test_environment_storage_table(tmp_path):

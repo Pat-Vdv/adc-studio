@@ -149,8 +149,8 @@ def test_environment_is_composed():
     system = environment.payload["system"]
     assert system["server_name"] == "SRV-SQL-01"
     assert system["database_engine"] == "Microsoft SQL Server 2014 Standard"
-    assert system["cpu_logical_count"] == 40  # valeur reprise telle quelle
-    assert system["memory_gb"] == 64
+    assert system["cpu_logical_count"] == 16  # valeur reprise telle quelle
+    assert system["memory_gb"] == 32
 
 
 def test_environment_storage_rows_are_normalized():
